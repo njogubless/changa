@@ -1,4 +1,5 @@
 # changa
+<<<<<<< HEAD
 
 A new Flutter project.
 
@@ -15,3 +16,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+a contribution project that incorporates both FastAPI and flutter and dart 
+>>>>>>> cb56bdb9f6bfc604779782b4625168975a43b8aa
