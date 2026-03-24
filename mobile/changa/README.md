@@ -180,90 +180,15 @@ mkdir -p assets/fonts assets/images assets/animations assets/icons
 
 Add your logo to `assets/images/logo.png` — a 288×288 transparent PNG works best.
 
-### Step 5: Update the API URL
 
-Open `lib/core/constants/api_constants.dart` and set your backend URL:
 
-```dart
-// Android emulator (your laptop = 10.0.2.2 from inside the emulator)
-static const String baseUrl = 'http://10.0.2.2:8000';
 
-// Physical device on the same Wi-Fi network
-static const String baseUrl = 'http://192.168.X.X:8000';
-
-// Production
-static const String baseUrl = 'https://api.changa.co.ke';
-```
-
-### Step 6: Update Android SDK config
-
-In `android/app/build.gradle`:
-
-```gradle
-minSdkVersion 24      // Android 7.0 — widest compatible range
-targetSdkVersion 34   // Android 14 — latest
-compileSdkVersion 34
-multiDexEnabled true  // Required for flutter_secure_storage
-```
-
-In `android/app/src/main/AndroidManifest.xml`:
-
-```xml
-<uses-permission android:name="android.permission.INTERNET"/>
-```
-
-### Step 7: Install and run
+### Step 5: Install and run
 
 ```bash
 flutter pub get
 dart run flutter_native_splash:create
 flutter run
-```
-
----
-
-## The Design System
-
-Everything visual lives in `lib/core/theme/app_theme.dart`. Change it once, change it everywhere.
-
-### Colors
-
-```dart
-AppColors.forest      // #1B4332 — primary brand (M-Pesa green family)
-AppColors.sage        // #52B788 — accent, progress bars
-AppColors.mint        // #95D5B2 — success, light fills
-AppColors.terra       // #C75B39 — CTA buttons, errors, Airtel flows
-AppColors.gold        // #E8A020 — highlights, badges, completion
-AppColors.cream       // #FAF3E0 — light mode background
-AppColors.earth       // #2C1A0E — dark mode background
-AppColors.sand        // #E8D5A3 — borders, dividers
-AppColors.mpesaGreen  // #00A550 — official M-Pesa brand color
-AppColors.airtelRed   // #E40520 — official Airtel brand color
-```
-
-### Typography
-
-```dart
-AppTextStyles.display1    // 48px Sora ExtraBold — hero amounts
-AppTextStyles.h1          // 28px Sora Bold — screen titles
-AppTextStyles.h3          // 18px Sora Bold — section headers
-AppTextStyles.bodyLarge   // 16px DM Sans — main body text
-AppTextStyles.bodySmall   // 12px DM Sans — captions, hints
-AppTextStyles.button      // 14px Sora SemiBold — all button labels
-AppTextStyles.amount      // 32px Sora ExtraBold — KES amounts
-AppTextStyles.tab         // 12px Sora SemiBold — nav labels
-```
-
-### Spacing & Radius
-
-```dart
-AppSpacing.lg       // 16px — standard component padding
-AppSpacing.xxl      // 24px — section gaps
-AppSpacing.pagePadding  // EdgeInsets.symmetric(horizontal: 20)
-
-AppRadius.mdAll     // BorderRadius.all(Radius.circular(12))
-AppRadius.lgAll     // BorderRadius.all(Radius.circular(16))
-AppRadius.pillAll   // BorderRadius.all(Radius.circular(999))
 ```
 
 ---
@@ -332,25 +257,6 @@ redirect: (context, state) {
 
 ---
 
-## Android Compatibility
-
-The app is tested and designed to run on Android 7.0 through Android 14.
-
-| Android Version | API Level | Target? |
-|----------------|-----------|---------|
-| 7.0 Nougat | 24 | Minimum |
-| 8.0 Oreo | 26 | ✓ |
-| 9.0 Pie | 28 | ✓ |
-| 10 | 29 | ✓ |
-| 11 | 30 | ✓ |
-| 12 | 31 | ✓ |
-| 13 | 33 | ✓ |
-| 14 | 34 | Target |
-
-This covers **95%+ of Android devices active in Kenya** as of 2026.
-
----
-
 ## The Honest Limitations
 
 You deserve to know exactly what this is and isn't.
@@ -389,75 +295,14 @@ Here's how you turn this into an app people recommend to their chama:
 
 **Step 7 — Localization.** Add Swahili (`sw`) as a second language using `flutter_localizations`. Kenya is bilingual — a lot of users will appreciate this.
 
----
 
-## Common Issues
 
-**"Connection refused" on Android emulator**
 
-The emulator can't reach `localhost` — use `10.0.2.2` instead:
-```dart
-static const String baseUrl = 'http://10.0.2.2:8000';
-```
 
-**"Cleartext HTTP traffic not permitted" on Android**
 
-Add this to `android/app/src/main/AndroidManifest.xml`:
-```xml
-<application android:usesCleartextTraffic="true" ...>
-```
-Only for development. Use HTTPS in production.
 
-**Fonts not loading**
-
-Font file names in `pubspec.yaml` must exactly match the `.ttf` files in `assets/fonts/`. Case sensitive.
-
-**Splash screen not updating**
-
-```bash
-dart run flutter_native_splash:remove
-dart run flutter_native_splash:create
-```
-
-**`MissingPluginException` for flutter_secure_storage**
-
-Add to `android/app/build.gradle`:
-```gradle
-defaultConfig {
-    multiDexEnabled true
-}
-```
 
 ---
 
-## Running Tests
 
-```bash
-flutter test
-```
 
-The test structure mirrors the feature structure. Add tests in `test/features/<feature>/`.
-
----
-
-## A Final Word
-
-A lot of app developers build for Silicon Valley. You're building for Nairobi. For people whose daily transaction is a Safaricom STK Push, whose community organizing happens in WhatsApp groups, whose trust in a product is earned by it working the first time.
-
-The architecture is clean. The payment flow is solid. The design respects the user.
-
-What you do with it is up to you.
-
-**Now go build something worth downloading.**
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-=======
-a contribution project that incorporates both FastAPI and flutter and dart 
->>>>>>> cb56bdb9f6bfc604779782b4625168975a43b8aa
