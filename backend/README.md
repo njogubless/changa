@@ -308,13 +308,3 @@ Here's how you take this from boilerplate to production SaaS:
 **Step 6 — Admin panel.** Build a simple `/admin` section for viewing projects, users, and transactions. FastAPI + a simple HTML template, or connect to a tool like Metabase.
 
 ---
-
-## A Final Word
-
-The hardest part of building for your community is believing it's worth doing. You've already cleared that bar.
-
-The Daraja integration, the JWT rotation, the contribution math — that's all handled. What remains is yours to build: the features, the community, the thing that makes Changa *yours*.
-
-This is just the beginning.
-
-**Go build something people will use.**
