@@ -1,5 +1,4 @@
 # changa
-<<<<<<< HEAD
 
 A new Flutter project.
 
