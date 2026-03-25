@@ -1,43 +1,43 @@
-
-# ─── Python ───────────────────────────────────────
-venv/
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
 .Python
-*.egg-info/
-dist/
-build/
+*.so
+.venv/
+venv/
+env/
 
-# ─── Environment Variables (NEVER push these) ─────
+# Env files — never commit real keys
 .env
-.env.*
 !.env.example
 
-# ─── Database ─────────────────────────────────────
-*.db
-*.sqlite3
-
-# ─── Testing ──────────────────────────────────────
+# Test artifacts
 .pytest_cache/
-.coverage
+*.db
 htmlcov/
+.coverage
+coverage.xml
 
-# ─── IDEs ─────────────────────────────────────────
-.vscode/
+# Alembic
+alembic/versions/__pycache__/
+
+# Docker
+*.log
+
+# IDE
 .idea/
+.vscode/
 *.swp
+*.swo
+
+# macOS
 .DS_Store
 
-# ─── Flutter/Dart ─────────────────────────────────
+# Flutter/Dart
 mobile/.dart_tool/
 mobile/build/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
-mobile/*.g.dart
-
-# ─── Docker ───────────────────────────────────────
-*.env.docker
-
-# ─── OS ───────────────────────────────────────────
-Thumbs.db
+mobile/pubspec.lock
