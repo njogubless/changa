@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static final forest = Color(0xFF1B4332);
+  static const forest = Color(0xFF1B4332);
   static const green = Color(0xFF2D6A4F);
   static const sage = Color(0xFF52B788);
   static const mint = Color(0xFF95D5B2);
