@@ -2,11 +2,7 @@ import 'package:changa/core/network/api_client.dart';
 import 'package:changa/features/auth/data/models/auth_models.dart';
 import 'package:changa/features/auth/data/repositories/auth_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-
-// ── Infrastructure providers ──────────────────────────────────────────────────
 
 final secureStorageProvider = Provider<FlutterSecureStorage>(
   (_) => const FlutterSecureStorage(
@@ -24,8 +20,6 @@ final authRepositoryProvider = Provider<AuthRepository>(
     ref.watch(secureStorageProvider),
   ),
 );
-
-// ── Auth state ────────────────────────────────────────────────────────────────
 
 sealed class AuthState {
   const AuthState();
@@ -52,8 +46,6 @@ class AuthError extends AuthState {
   final String message;
   const AuthError(this.message);
 }
-
-// ── Auth notifier ─────────────────────────────────────────────────────────────
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
@@ -96,10 +88,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     state = const AuthLoading();
     try {
       final tokens = await _repo.login(email: email, password: password);
@@ -119,12 +108,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 }
 
-final authNotifierProvider =
-    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
+  ref,
+) {
   return AuthNotifier(ref.watch(authRepositoryProvider));
 });
 
-// Convenience — the current user or null
 final currentUserProvider = Provider<UserModel?>((ref) {
   final state = ref.watch(authNotifierProvider);
   return state is AuthAuthenticated ? state.user : null;
