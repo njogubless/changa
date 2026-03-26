@@ -1,43 +1,64 @@
 name: changa
-description: "A new Flutter project."
+description: "Group contribution platform for Kenya — M-Pesa & Airtel Money"
 
 publish_to: "none"
-
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.1
+  sdk: ^3.7.0
 
 dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
-  go_router: ^17.1.0
-  shared_preferences: ^2.5.4
-  flutter_riverpod: ^3.3.1
+  # Navigation
+  go_router: ^14.8.1
+
+  # State management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Network
   dio: ^5.9.2
-  flutter_secure_storage: ^10.0.0
-  dartz: ^0.10.1
-  fl_chart: ^1.2.0
-  lottie: ^3.3.2
+  connectivity_plus: ^6.1.1
+
+  # Storage
+  flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.3.5
+
+  # UI
+  google_fonts: ^6.2.1
+  cached_network_image: ^3.4.1
   percent_indicator: ^4.2.5
-  get_it: ^9.2.1
-  intl: ^0.20.2
-  google_fonts: ^8.0.2
+  lottie: ^3.3.2
+  fl_chart: ^0.69.0
+
+  # Utilities
+  intl: ^0.19.0
+  dartz: ^0.10.1
+  get_it: ^8.0.3
+  image_picker: ^1.1.2
+
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  flutter_lints: ^6.0.0
-  flutter_native_splash: ^2.4.7
+  flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.4.3
+  build_runner: ^2.4.14
+  riverpod_generator: ^2.6.5
+  custom_lint: ^0.7.5
+  riverpod_lint: ^2.6.5
 
 flutter:
   uses-material-design: true
+
   fonts:
     - family: Sora
       fonts:
+        - asset: assets/fonts/Sora-Light.ttf
+          weight: 300
         - asset: assets/fonts/Sora-Regular.ttf
         - asset: assets/fonts/Sora-SemiBold.ttf
           weight: 600
@@ -50,4 +71,10 @@ flutter:
         - asset: assets/fonts/DMSans-Regular.ttf
         - asset: assets/fonts/DMSans-Medium.ttf
           weight: 500
+        - asset: assets/fonts/DMSans-Bold.ttf
+          weight: 700
+
   assets:
+    - assets/images/
+    - assets/animations/
+    - assets/icons/
