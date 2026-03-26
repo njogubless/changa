@@ -29,8 +29,6 @@ class ApiClient {
 
   Dio get dio => _dio;
 
-  // ── Public request helpers ────────────────────────────────────────────────
-
   Future<Response> get(String path, {Map<String, dynamic>? params}) async {
     try {
       return await _dio.get(path, queryParameters: params);
@@ -63,8 +61,6 @@ class ApiClient {
     }
   }
 
-  // ── Token management ──────────────────────────────────────────────────────
-
   Future<String?> getAccessToken() =>
       _storage.read(key: AppConstants.accessTokenKey);
 
@@ -82,8 +78,6 @@ class ApiClient {
   Future<void> clearTokens() async {
     await _storage.deleteAll();
   }
-
-  // ── Error mapping ─────────────────────────────────────────────────────────
 
   Failure _mapError(DioException e) {
     switch (e.type) {
@@ -114,15 +108,12 @@ class ApiClient {
   }
 }
 
-// ── Auth Interceptor ──────────────────────────────────────────────────────────
-
 class _AuthInterceptor extends Interceptor {
   final ApiClient _client;
   final FlutterSecureStorage _storage;
 
   _AuthInterceptor(this._client, this._storage);
 
-  // Endpoints that don't need an Authorization header
   static const _publicPaths = [
     ApiConstants.register,
     ApiConstants.login,
@@ -149,22 +140,23 @@ class _AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    // Only attempt refresh on 401 from non-auth endpoints
-    final isPublic = _publicPaths.any((p) => err.requestOptions.path.endsWith(p));
+    final isPublic = _publicPaths.any(
+      (p) => err.requestOptions.path.endsWith(p),
+    );
     if (err.response?.statusCode != 401 || isPublic) {
       return handler.next(err);
     }
 
-    // Attempt silent token refresh
     try {
-      final refreshToken = await _storage.read(key: AppConstants.refreshTokenKey);
+      final refreshToken = await _storage.read(
+        key: AppConstants.refreshTokenKey,
+      );
       if (refreshToken == null) return handler.next(err);
 
-      // Call refresh endpoint directly (bypass interceptor)
       final refreshResponse = await _client.dio.post(
         ApiConstants.refresh,
         data: {'refresh_token': refreshToken},
-        options: Options(headers: {}), // no auth header for this call
+        options: Options(headers: {}),
       );
 
       final newAccess = refreshResponse.data['access_token'] as String;
@@ -172,13 +164,11 @@ class _AuthInterceptor extends Interceptor {
 
       await _client.saveTokens(access: newAccess, refresh: newRefresh);
 
-      // Retry the original request with new token
       final retryOptions = err.requestOptions;
       retryOptions.headers['Authorization'] = 'Bearer $newAccess';
       final retryResponse = await _client.dio.fetch(retryOptions);
       handler.resolve(retryResponse);
     } on DioException {
-      // Refresh also failed — user needs to log in again
       await _client.clearTokens();
       handler.next(err);
     }
