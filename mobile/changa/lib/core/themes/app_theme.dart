@@ -14,7 +14,7 @@ class AppColors {
   static const mint = Color(0xFF95D5B2);
 
   // Accent
-  static const terra = Color(0xFFC75B39);
+  static const tera = Color(0xFFC75B39);
   static const gold = Color(0xFFE8A020);
 
   // Surfaces — light
@@ -174,7 +174,7 @@ class AppTheme {
         onPrimary: AppColors.cream,
         secondary: AppColors.sage,
         onSecondary: AppColors.white,
-        tertiary: AppColors.terra,
+        tertiary: AppColors.tera,
         surface: AppColors.cream,
         onSurface: AppColors.charcoal,
         error: AppColors.error,
