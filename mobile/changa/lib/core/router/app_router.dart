@@ -25,11 +25,19 @@ class AppRoutes {
   static const register = '/register';
   static const home = '/home';
   static const projects = '/projects';
-  static const projectDetail = '/projects/:id';
   static const createProject = '/projects/create';
+  static const projectDetail = '/projects/:id';
   static const payment = '/payment';
   static const paymentStatus = '/payment/status';
   static const profile = '/profile';
+
+  // Helper to build project detail path
+  static String projectDetailPath(String id) => '/projects/$id';
+  // Helper to build payment path
+  static String paymentPath(String projectId) =>
+      '/payment?project_id=$projectId';
+  static String paymentStatusPath(String ref, double amount) =>
+      '/payment/status?ref=$ref&amount=$amount';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -46,21 +54,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Still checking session — stay on splash
       if (isInitial) return AppRoutes.splash;
 
-// no redirect
+      // no redirect
     },
     routes: [
-      GoRoute(
-        path: AppRoutes.splash,
-        builder: (_, __) => const SplashScreen(),
-      ),
+      GoRoute(path: AppRoutes.splash, builder: (_, __) => const SplashScreen()),
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (_, __) => const OnboardingScreen(),
       ),
-      GoRoute(
-        path: AppRoutes.login,
-        builder: (_, __) => const LoginScreen(),
-      ),
+      GoRoute(path: AppRoutes.login, builder: (_, __) => const LoginScreen()),
       GoRoute(
         path: AppRoutes.register,
         builder: (_, __) => const RegisterScreen(),
@@ -87,27 +89,30 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Full-screen routes (no bottom nav)
       GoRoute(
-        path: AppRoutes.projectDetail,
-        builder: (_, state) => ProjectDetailScreen(
-          projectId: state.pathParameters['id']!,
-        ),
-      ),
-      GoRoute(
         path: AppRoutes.createProject,
         builder: (_, __) => const CreateProjectScreen(),
       ),
       GoRoute(
+        path: AppRoutes.projectDetail,
+        builder:
+            (_, state) =>
+                ProjectDetailScreen(projectId: state.pathParameters['id']!),
+      ),
+
+      GoRoute(
         path: AppRoutes.payment,
-        builder: (_, state) => PaymentScreen(
-          projectId: state.uri.queryParameters['project_id']!,
-        ),
+        builder:
+            (_, state) => PaymentScreen(
+              projectId: state.uri.queryParameters['project_id']!,
+            ),
       ),
       GoRoute(
         path: AppRoutes.paymentStatus,
-        builder: (_, state) => PaymentStatusScreen(
-          reference: state.uri.queryParameters['ref']!,
-          amount: double.parse(state.uri.queryParameters['amount'] ?? '0'),
-        ),
+        builder:
+            (_, state) => PaymentStatusScreen(
+              reference: state.uri.queryParameters['ref']!,
+              amount: double.parse(state.uri.queryParameters['amount'] ?? '0'),
+            ),
       ),
     ],
   );
