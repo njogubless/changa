@@ -1,0 +1,17 @@
+# Run: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#1B4332"
+  color_dark: "#1B4332"
+
+  # Once you have assets/images/logo.png, uncomment:
+  # image: assets/images/logo.png
+  # image_dark: assets/images/logo.png
+
+  android: true
+  ios: false
+
+  android_12:
+    color: "#1B4332"
+    color_dark: "#1B4332"
+    # image: assets/images/logo.png
+    icon_background_color: "#1B4332"
