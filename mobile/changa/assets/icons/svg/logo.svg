@@ -1,0 +1,45 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="112" fill="#1B4332"/>
+
+  <!-- Outer ring accent -->
+  <circle cx="256" cy="256" r="210" fill="none" stroke="#2D6A4F" stroke-width="2" opacity="0.5"/>
+
+  <!-- The C arc -->
+  <path
+    d="M 348 156
+       A 122 122 0 1 0 348 356"
+    fill="none"
+    stroke="#FAF3E0"
+    stroke-width="38"
+    stroke-linecap="round"/>
+
+  <!-- Bottom leaf -->
+  <path
+    d="M 348 356
+       Q 386 330 374 292
+       Q 340 300 330 338
+       Q 336 350 348 356 Z"
+    fill="#52B788"/>
+
+  <!-- Bottom leaf vein -->
+  <path
+    d="M 348 356 Q 355 325 368 306"
+    fill="none"
+    stroke="#95D5B2"
+    stroke-width="3"
+    stroke-linecap="round"
+    opacity="0.7"/>
+
+  <!-- Top leaf accent -->
+  <path
+    d="M 348 156
+       Q 382 132 378 100
+       Q 348 108 340 140
+       Q 342 150 348 156 Z"
+    fill="#95D5B2"/>
+
+  <!-- Center dot -->
+  <circle cx="256" cy="256" r="14" fill="#E8A020" opacity="0.9"/>
+  <circle cx="256" cy="256" r="7" fill="#FAF3E0"/>
+</svg>
