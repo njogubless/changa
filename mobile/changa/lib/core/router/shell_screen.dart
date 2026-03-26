@@ -10,7 +10,7 @@ class ShellScreen extends StatelessWidget {
     final location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith(AppRoutes.projects)) return 1;
     if (location.startsWith(AppRoutes.profile)) return 2;
-    return 0; // home
+    return 0; 
   }
 
   @override
