@@ -5,7 +5,7 @@ class ApiConstants {
   // Android emulator → 10.0.2.2
   // Physical device  → your machine's LAN IP e.g. 192.168.1.105
   // Production       → https://api.changa.co.ke
-  static const String baseUrl = 'http://10.0.2.2:8000';
+static const String baseUrl = 'http://192.168.1.193:8000';
 
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 30);
