@@ -78,8 +78,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _navigate();
   }
 
-  Future<void> _navigate() async {
-    if (_navigated || !mounted) return;
+Future<void> _navigate() async {
+  if (_navigated || !mounted) return;
+
+  int attempts = 0;
+  const maxAttempts = 15; // 6 seconds max wait
+
+  while (attempts < maxAttempts) {
+    if (!mounted) return;
     final authState = ref.read(authNotifierProvider);
 
     if (authState is AuthAuthenticated) {
@@ -87,6 +93,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       context.go(AppRoutes.home);
       return;
     }
+
     if (authState is AuthUnauthenticated) {
       _navigated = true;
       final prefs = await SharedPreferences.getInstance();
@@ -95,10 +102,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       context.go(done ? AppRoutes.login : AppRoutes.onboarding);
       return;
     }
-    // Still loading — retry
+
+    // Still AuthInitial or AuthLoading — wait and retry
+    attempts++;
     await Future.delayed(const Duration(milliseconds: 400));
-    _navigate();
   }
+
+  // Fallback — give up and go to onboarding
+  if (!mounted) return;
+  _navigated = true;
+  context.go(AppRoutes.onboarding);
+}
 
   @override
   void dispose() {
