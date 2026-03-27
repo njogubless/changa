@@ -54,19 +54,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _checkSession();
   }
 
-  Future<void> _checkSession() async {
-    final isLoggedIn = await _repo.isLoggedIn();
-    if (!isLoggedIn) {
-      state = const AuthUnauthenticated();
-      return;
-    }
-    final user = await _repo.getMe();
-    if (user != null) {
-      state = AuthAuthenticated(user);
-    } else {
-      state = const AuthUnauthenticated();
-    }
+Future<void> _checkSession() async {
+  print('>>> CHECK SESSION STARTED');
+  final isLoggedIn = await _repo.isLoggedIn();
+  print('>>> IS LOGGED IN: $isLoggedIn');
+  if (!isLoggedIn) {
+    state = const AuthUnauthenticated();
+    print('>>> STATE SET: AuthUnauthenticated');
+    return;
   }
+  final user = await _repo.getMe();
+  print('>>> GET ME RESULT: $user');
+  if (user != null) {
+    state = AuthAuthenticated(user);
+    print('>>> STATE SET: AuthAuthenticated');
+  } else {
+    state = const AuthUnauthenticated();
+    print('>>> STATE SET: AuthUnauthenticated (no user)');
+  }
+}
 
   Future<void> register({
     required String fullName,
