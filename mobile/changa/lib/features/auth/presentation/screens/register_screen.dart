@@ -39,22 +39,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _errorMessage = null);
+Future<void> _submit() async {
+  if (!_formKey.currentState!.validate()) return;
+  setState(() => _errorMessage = null);
 
+  debugPrint('>>> SUBMIT STARTED');
+
+  try {
     await ref.read(authNotifierProvider.notifier).register(
           fullName: _nameCtrl.text.trim(),
           email: _emailCtrl.text.trim(),
           phone: _phoneCtrl.text.trim(),
           password: _passwordCtrl.text,
         );
-
-    final state = ref.read(authNotifierProvider);
-    if (state is AuthError && mounted) {
-      setState(() => _errorMessage = _friendlyError(state.message));
-    }
+    debugPrint('>>> REGISTER CALL COMPLETED');
+  } catch (e, st) {
+    debugPrint('>>> REGISTER THREW: $e');
+    debugPrint('>>> STACK: $st');
   }
+
+  if (!mounted) return;
+  debugPrint('>>> MOUNTED CHECK PASSED');
+
+  final state = ref.read(authNotifierProvider);
+  debugPrint('>>> STATE AFTER REGISTER: $state');
+
+  if (state is AuthError) {
+    setState(() => _errorMessage = _friendlyError(state.message));
+  }
+}
 
   String _friendlyError(String raw) {
     if (raw.contains('Email already')) return 'This email is already registered.';
