@@ -39,7 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
         );
-
+        if(!mounted) return;
     final state = ref.read(authNotifierProvider);
     if (state is AuthError && mounted) {
       setState(() => _errorMessage = _friendlyError(state.message));
