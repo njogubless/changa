@@ -51,10 +51,34 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isInitial = authState is AuthInitial;
       final isLoading = authState is AuthLoading;
 
-      // Still checking session — stay on splash
-      if (isInitial) return AppRoutes.splash;
+      final currentPath = state.matchedLocation;
 
-      // no redirect
+      // Still checking session — stay on splash
+      if (isInitial || isLoading) return AppRoutes.splash;
+
+      final authRoutes = [
+        AppRoutes.login,
+        AppRoutes.register,
+        AppRoutes.onboarding,
+        AppRoutes.splash,
+      ];
+
+      if (isAuthenticated) {
+        // If on an auth screen, send to home
+        if (authRoutes.contains(currentPath)) return AppRoutes.home;
+        return null; // already on a valid screen
+      } else {
+        // Not authenticated — check if onboarding was seen
+        final prefs = await SharedPreferences.getInstance();
+        final seenOnboarding = prefs.getBool('onboarding_done') ?? false;
+
+        if (currentPath == AppRoutes.onboarding) return null;
+        if (!seenOnboarding) return AppRoutes.onboarding;
+
+        // Send to login if trying to access protected route
+        if (!authRoutes.contains(currentPath)) return AppRoutes.login;
+        return null;
+      }
     },
     routes: [
       GoRoute(path: AppRoutes.splash, builder: (_, __) => const SplashScreen()),
