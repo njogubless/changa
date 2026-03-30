@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-
 class ProjectDetailScreen extends ConsumerWidget {
   final String projectId;
   const ProjectDetailScreen({super.key, required this.projectId});
@@ -28,7 +27,6 @@ class ProjectDetailScreen extends ConsumerWidget {
           backgroundColor: AppColors.cream,
           body: CustomScrollView(
             slivers: [
-             
               SliverAppBar(
                 expandedHeight: 220,
                 pinned: true,
@@ -40,8 +38,11 @@ class ProjectDetailScreen extends ConsumerWidget {
                       shape: BoxShape.circle,
                     ),
                     padding: const EdgeInsets.all(6),
-                    child: const Icon(Icons.arrow_back,
-                        color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                   onPressed: () => context.pop(),
                 ),
@@ -54,26 +55,30 @@ class ProjectDetailScreen extends ConsumerWidget {
                           shape: BoxShape.circle,
                         ),
                         padding: const EdgeInsets.all(6),
-                        child: const Icon(Icons.edit_outlined,
-                            color: Colors.white, size: 18),
+                        child: const Icon(
+                          Icons.edit_outlined,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                       onPressed: () {},
                     ),
                   const SizedBox(width: 8),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: project.coverImageUrl != null
-                      ? Image.network(
-                          project.coverImageUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              _HeroPlaceholder(title: project.title),
-                        )
-                      : _HeroPlaceholder(title: project.title),
+                  background:
+                      project.coverImageUrl != null
+                          ? Image.network(
+                            project.coverImageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder:
+                                (_, __, ___) =>
+                                    _HeroPlaceholder(title: project.title),
+                          )
+                          : _HeroPlaceholder(title: project.title),
                 ),
               ),
 
- 
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(20),
@@ -100,20 +105,23 @@ class ProjectDetailScreen extends ConsumerWidget {
                       if (project.visibility == ProjectVisibility.private)
                         Row(
                           children: [
-                            const Icon(Icons.lock_outline,
-                                size: 14, color: AppColors.gold),
+                            const Icon(
+                              Icons.lock_outline,
+                              size: 14,
+                              color: AppColors.gold,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Private project',
-                              style: AppTextStyles.caption
-                                  .copyWith(color: AppColors.gold),
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.gold,
+                              ),
                             ),
                           ],
                         ),
 
                       const SizedBox(height: 24),
 
-                    
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -149,13 +157,15 @@ class ProjectDetailScreen extends ConsumerWidget {
                                 _AmountChip(
                                   label: 'Goal',
                                   value: CurrencyFormatter.format(
-                                      project.targetAmount),
+                                    project.targetAmount,
+                                  ),
                                 ),
                                 const SizedBox(width: 12),
                                 _AmountChip(
                                   label: 'Remaining',
                                   value: CurrencyFormatter.format(
-                                      project.deficit),
+                                    project.deficit,
+                                  ),
                                 ),
                                 const Spacer(),
                                 Column(
@@ -183,7 +193,6 @@ class ProjectDetailScreen extends ConsumerWidget {
 
                       const SizedBox(height: 24),
 
-                   
                       if (project.description != null) ...[
                         Text(
                           'About this project',
@@ -202,7 +211,6 @@ class ProjectDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 24),
                       ],
 
-                  
                       if (project.deadline != null) ...[
                         _InfoRow(
                           icon: Icons.calendar_today_outlined,
@@ -212,22 +220,20 @@ class ProjectDetailScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                       ],
 
-                     
                       _ContributorsSection(projectId: projectId),
                     ],
                   ),
                 ),
               ),
 
-              
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
 
-        
-          bottomNavigationBar: project.status == ProjectStatus.active
-              ? _ContributeCTA(projectId: projectId)
-              : null,
+          bottomNavigationBar:
+              project.status == ProjectStatus.active
+                  ? _ContributeCTA(projectId: projectId)
+                  : null,
         );
       },
     );
@@ -235,13 +241,22 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   String _formatDate(DateTime date) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }
-
 
 class _AmountChip extends StatelessWidget {
   final String label;
@@ -268,8 +283,6 @@ class _AmountChip extends StatelessWidget {
     );
   }
 }
-
-
 
 class _InfoRow extends StatelessWidget {
   final IconData icon;
@@ -303,8 +316,6 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-
-
 class _ContributorsSection extends ConsumerWidget {
   final String projectId;
   const _ContributorsSection({required this.projectId});
@@ -331,8 +342,10 @@ class _ContributorsSection extends ConsumerWidget {
                 ),
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.sage.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -348,16 +361,15 @@ class _ContributorsSection extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
-            ...contributors.take(5).map(
-                  (c) => _ContributorRow(contributor: c),
-                ),
+            ...contributors.take(5).map((c) => _ContributorRow(contributor: c)),
             if (contributors.length > 5)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
                   '+ ${contributors.length - 5} more contributors',
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.sage),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.sage,
+                  ),
                 ),
               ),
           ],
@@ -378,22 +390,31 @@ class _ContributorRow extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            radius: 18,
-            backgroundColor: AppColors.sage.withValues(alpha: 0.15),
+            backgroundColor: AppColors.forest,
+            radius: 40,
             child: Text(
-              (contributor.fullName ?? 'A')[0].toUpperCase(),
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.forest,
-                fontWeight: FontWeight.w700,
+              contributor.fullName.split(' ').map((e) => e[0]).take(2).join(),
+              style: TextStyle(
+                color: AppColors.cream,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            // radius: 18,
+            // backgroundColor: AppColors.sage.withValues(alpha: 0.15),
+            // child: Text(
+            //   (contributor.fullName ?? 'A')[0].toUpperCase(),
+            //   style: AppTextStyles.bodySmall.copyWith(
+            //     color: AppColors.forest,
+            //     fontWeight: FontWeight.w700,
+            //   ),
+            // ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               contributor.fullName ?? 'Anonymous',
-              style:
-                  AppTextStyles.bodyMedium.copyWith(color: AppColors.forest),
+              style: AppTextStyles.bodyMedium.copyWith(color: AppColors.forest),
             ),
           ),
           Text(
@@ -413,7 +434,6 @@ class _ContributorRow extends StatelessWidget {
     );
   }
 }
-
 
 class _ContributeCTA extends StatelessWidget {
   final String projectId;
@@ -435,8 +455,7 @@ class _ContributeCTA extends StatelessWidget {
         ),
       ),
       child: ElevatedButton.icon(
-        onPressed: () =>
-            context.push(AppRoutes.paymentPath(projectId)),
+        onPressed: () => context.push(AppRoutes.paymentPath(projectId)),
         icon: const Icon(Icons.favorite_outline, size: 18),
         label: const Text('Contribute now'),
         style: ElevatedButton.styleFrom(
@@ -447,8 +466,6 @@ class _ContributeCTA extends StatelessWidget {
     );
   }
 }
-
-
 
 class _HeroPlaceholder extends StatelessWidget {
   final String title;
@@ -470,8 +487,6 @@ class _HeroPlaceholder extends StatelessWidget {
     );
   }
 }
-
-
 
 class _DetailSkeleton extends StatelessWidget {
   const _DetailSkeleton();
@@ -511,18 +526,14 @@ class _DetailError extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline,
-                  color: AppColors.sand, size: 48),
+              const Icon(Icons.error_outline, color: AppColors.sand, size: 48),
               const SizedBox(height: 16),
               Text(
                 'Could not load project',
                 style: AppTextStyles.h4.copyWith(color: AppColors.forest),
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: onBack,
-                child: const Text('Go back'),
-              ),
+              ElevatedButton(onPressed: onBack, child: const Text('Go back')),
             ],
           ),
         ),
