@@ -41,9 +41,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         );
         if(!mounted) return;
     final state = ref.read(authNotifierProvider);
-    if (state is AuthError && mounted) {
-      setState(() => _errorMessage = _friendlyError(state.message));
-    }
+    if (state is AuthAuthenticated) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Karibu tena, ${state.user.fullName.split(' ').first}! 👋'),
+      backgroundColor: AppColors.forest,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+  );
+}
+    // if (state is AuthError && mounted) {
+    //   setState(() => _errorMessage = _friendlyError(state.message));
+    // }
     // Authenticated → router redirects automatically
   }
 
