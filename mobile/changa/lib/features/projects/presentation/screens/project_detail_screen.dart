@@ -8,6 +8,7 @@ import 'package:changa/features/projects/presentation/widgets/project_widgets.da
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/services.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projectId;
@@ -435,6 +436,8 @@ class _ContributorRow extends StatelessWidget {
   }
 }
 
+
+
 class _ContributeCTA extends StatelessWidget {
   final String projectId;
   const _ContributeCTA({required this.projectId});
@@ -455,7 +458,10 @@ class _ContributeCTA extends StatelessWidget {
         ),
       ),
       child: ElevatedButton.icon(
-        onPressed: () => context.push(AppRoutes.paymentPath(projectId)),
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          context.push(AppRoutes.paymentPath(projectId));
+        },
         icon: const Icon(Icons.favorite_outline, size: 18),
         label: const Text('Contribute now'),
         style: ElevatedButton.styleFrom(
