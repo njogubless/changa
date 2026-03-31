@@ -4,6 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/router/app_router.dart';
 
+const bool kBypassAuth = bool.fromEnvironment(
+  'BYPASS_AUTH',
+  defaultValue: false,
+);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
