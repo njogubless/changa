@@ -51,22 +51,30 @@ class ProjectsRepository {
     return ProjectModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<ProjectModel> updateProject(
-    String id, {
-    String? title,
-    String? description,
-    String? status,
-  }) async {
-    final response = await _api.put(
-      ApiConstants.projectById(id),
-      data: {
-        if (title != null) 'title': title,
-        if (description != null) 'description': description,
-        if (status != null) 'status': status,
-      },
-    );
-    return ProjectModel.fromJson(response.data as Map<String, dynamic>);
-  }
+ Future<ProjectModel> updateProject(
+  String id, {
+  String? title,
+  String? description,
+  double? targetAmount,       // ← add
+  String? visibility,         // ← add
+  bool? isAnonymous,          // ← add
+  DateTime? deadline,         // ← add
+  String? status,
+}) async {
+  final response = await _api.put(
+    ApiConstants.projectById(id),
+    data: {
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (targetAmount != null) 'target_amount': targetAmount,
+      if (visibility != null) 'visibility': visibility,
+      if (isAnonymous != null) 'is_anonymous': isAnonymous,
+      if (deadline != null) 'deadline': deadline.toIso8601String(),
+      if (status != null) 'status': status,
+    },
+  );
+  return ProjectModel.fromJson(response.data as Map<String, dynamic>);
+}
 
   Future<List<ContributorModel>> getContributors(String id) async {
     final response = await _api.get(ApiConstants.projectContributors(id));
