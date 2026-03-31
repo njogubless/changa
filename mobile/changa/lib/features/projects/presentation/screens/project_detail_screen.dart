@@ -62,7 +62,10 @@ class ProjectDetailScreen extends ConsumerWidget {
                           size: 18,
                         ),
                       ),
-                      onPressed: () {},
+                      onPressed: () => context.push(
+                        '/projects/${project.id}/edit',
+                        extra: project,
+                      ),
                     ),
                   const SizedBox(width: 8),
                 ],
