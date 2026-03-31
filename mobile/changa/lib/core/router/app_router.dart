@@ -13,6 +13,7 @@ import 'package:changa/features/projects/presentation/screens/edit_project_scree
 import 'package:changa/features/projects/presentation/screens/project_detail_screen.dart';
 import 'package:changa/features/projects/presentation/screens/projects_list_screen.dart';
 import 'package:changa/features/splash/presentation/screens/splash_screen.dart';
+import 'package:changa/main.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -48,6 +49,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
     redirect: (context, state) async {
+      if (kBypassAuth) return AppRoutes.home;
       final isAuthenticated = authState is AuthAuthenticated;
       final isInitial = authState is AuthInitial;
       final isLoading = authState is AuthLoading;
@@ -141,9 +143,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/projects/:id/edit',
-        builder:(_, state)=> EditProjectScreen(
-          project:state.extra as ProjectModel,
-        ),),
+        builder:
+            (_, state) =>
+                EditProjectScreen(project: state.extra as ProjectModel),
+      ),
     ],
   );
 });
