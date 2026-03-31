@@ -7,11 +7,12 @@ import 'package:changa/features/onboarding/presentation/screens/onboarding_scree
 import 'package:changa/features/payments/presentation/screens/payment_screen.dart';
 import 'package:changa/features/payments/presentation/screens/payment_status_screen.dart';
 import 'package:changa/features/profile/presentation/screens/profile_screen.dart';
+import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:changa/features/projects/presentation/screens/create_project_screen.dart';
+import 'package:changa/features/projects/presentation/screens/edit_project_screen.dart';
 import 'package:changa/features/projects/presentation/screens/project_detail_screen.dart';
 import 'package:changa/features/projects/presentation/screens/projects_list_screen.dart';
 import 'package:changa/features/splash/presentation/screens/splash_screen.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -138,6 +139,11 @@ final routerProvider = Provider<GoRouter>((ref) {
               amount: double.parse(state.uri.queryParameters['amount'] ?? '0'),
             ),
       ),
+      GoRoute(
+        path: '/projects/:id/edit',
+        builder:(_, state)=> EditProjectScreen(
+          project:state.extra as ProjectModel,
+        ),),
     ],
   );
 });
