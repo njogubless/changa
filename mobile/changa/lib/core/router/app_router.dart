@@ -49,7 +49,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
     redirect: (context, state) async {
-      if (kBypassAuth) return AppRoutes.home;
       final isAuthenticated = authState is AuthAuthenticated;
       final isInitial = authState is AuthInitial;
       final isLoading = authState is AuthLoading;
