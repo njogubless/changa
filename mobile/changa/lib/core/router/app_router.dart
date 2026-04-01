@@ -13,7 +13,7 @@ import 'package:changa/features/projects/presentation/screens/edit_project_scree
 import 'package:changa/features/projects/presentation/screens/project_detail_screen.dart';
 import 'package:changa/features/projects/presentation/screens/projects_list_screen.dart';
 import 'package:changa/features/splash/presentation/screens/splash_screen.dart';
-import 'package:changa/main.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';

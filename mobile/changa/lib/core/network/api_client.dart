@@ -8,9 +8,8 @@ class ApiClient {
   late final Dio _dio;
   final FlutterSecureStorage _storage;
 
-  // Prevents multiple simultaneous refresh calls
-  bool _isRefreshing = false;
-  final List<Function> _pendingRequests = [];
+
+ 
 
   ApiClient(this._storage) {
     _dio = Dio(
