@@ -1,9 +1,8 @@
 import 'package:changa/features/projects/data/repositories/project_repository.dart';
-import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/projects/presentation/providers/project_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ── State ──────────────────────────────────────────────────────────────────
+
 class EditProjectState {
   final bool isLoading;
   final String? error;
@@ -16,7 +15,7 @@ class EditProjectState {
   });
 }
 
-// ── Notifier ───────────────────────────────────────────────────────────────
+
 class EditProjectNotifier extends StateNotifier<EditProjectState> {
   final ProjectsRepository _repo;
   EditProjectNotifier(this._repo) : super(const EditProjectState());
@@ -63,7 +62,7 @@ class EditProjectNotifier extends StateNotifier<EditProjectState> {
   void reset() => state = const EditProjectState();
 }
 
-// ── Provider ───────────────────────────────────────────────────────────────
+
 final editProjectProvider =
     StateNotifierProvider<EditProjectNotifier, EditProjectState>(
   (ref) => EditProjectNotifier(ref.watch(projectsRepositoryProvider)),

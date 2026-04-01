@@ -239,7 +239,6 @@ class _IllustrationPainter extends CustomPainter {
   }
 
   void _drawPool(Canvas canvas, Size size) {
-    final bgPaint = Paint()..color = AppColors.forest.withValues(alpha: 0.08);
     final fgPaint = Paint()..color = AppColors.forest;
     final accentP = Paint()..color = accent;
 
@@ -281,7 +280,7 @@ class _IllustrationPainter extends CustomPainter {
 
     // Coin
     canvas.drawCircle(center, 16, accentP);
-    final symPaint = Paint()..color = AppColors.cream;
+  
     final tp = TextPainter(
       text: TextSpan(
         text: 'KES',
@@ -346,7 +345,6 @@ class _IllustrationPainter extends CustomPainter {
   void _drawTrack(Canvas canvas, Size size) {
     final barBg = Paint()..color = AppColors.sand;
     final barFg = Paint()..color = accent;
-    final labelPaint = Paint()..color = AppColors.forest;
 
     final bars = [0.85, 0.55, 0.70, 0.40];
     final barW = size.width * 0.14;

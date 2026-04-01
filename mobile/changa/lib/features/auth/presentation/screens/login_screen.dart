@@ -57,15 +57,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // Authenticated → router redirects automatically
   }
 
-  String _friendlyError(String raw) {
-    if (raw.contains('401') || raw.contains('Invalid')) {
-      return 'Email or password is incorrect. Please try again.';
-    }
-    if (raw.contains('Network') || raw.contains('connection')) {
-      return 'No internet connection. Please check your network.';
-    }
-    return 'Something went wrong. Please try again.';
-  }
 
   @override
   Widget build(BuildContext context) {
