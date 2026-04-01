@@ -1,6 +1,8 @@
-import '../../../../core/constants/api_constants.dart';
-import '../../../../core/network/api_client.dart';
-import '../models/payment_models.dart';
+
+
+import 'package:changa/core/constants/api_constants.dart';
+import 'package:changa/core/network/api_client.dart';
+import 'package:changa/features/payments/data/models/payment_models.dart';
 
 class PaymentsRepository {
   final ApiClient _api;
