@@ -5,7 +5,7 @@ import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-// ── Project card ──────────────────────────────────────────────────────────────
+
 
 class ProjectCard extends StatelessWidget {
   final ProjectModel project;
@@ -110,7 +110,7 @@ class ProjectCard extends StatelessWidget {
       );
 }
 
-// ── Cover image ───────────────────────────────────────────────────────────────
+
 
 class _CoverImage extends StatelessWidget {
   final String? url;
@@ -165,7 +165,7 @@ class _CoverImage extends StatelessWidget {
   }
 }
 
-// ── Funding progress bar ──────────────────────────────────────────────────────
+
 
 class FundingProgressBar extends StatelessWidget {
   final double percentage;
@@ -211,7 +211,7 @@ class FundingProgressBar extends StatelessWidget {
   }
 }
 
-// ── Stat item ─────────────────────────────────────────────────────────────────
+
 
 class _StatItem extends StatelessWidget {
   final String label;
@@ -243,7 +243,6 @@ class _StatItem extends StatelessWidget {
   }
 }
 
-// ── Badge ─────────────────────────────────────────────────────────────────────
 
 class _Badge extends StatelessWidget {
   final String label;
@@ -270,7 +269,7 @@ class _Badge extends StatelessWidget {
   }
 }
 
-// ── Public badge ──────────────────────────────────────────────────────────────
+
 
 class StatusBadge extends StatelessWidget {
   final ProjectStatus status;
@@ -288,7 +287,7 @@ class StatusBadge extends StatelessWidget {
   }
 }
 
-// ── Empty state ───────────────────────────────────────────────────────────────
+
 
 class ProjectsEmptyState extends StatelessWidget {
   final String message;
