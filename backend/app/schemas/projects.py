@@ -2,7 +2,10 @@ from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
-from app.models.models import ProjectStatus, ProjectVisibility, ContributionStatus, PaymentProvider
+from app.models.models import (
+    ProjectStatus, PaymentAccountType,
+    ContributionStatus, PaymentProvider,
+)
 
 
 # ── Projects ───────────────────────────────────────────────────────────────────
@@ -11,10 +14,15 @@ class ProjectCreateRequest(BaseModel):
     title: str
     description: Optional[str] = None
     target_amount: float
-    visibility: ProjectVisibility = ProjectVisibility.PUBLIC
     is_anonymous: bool = False
     deadline: Optional[datetime] = None
     cover_image_url: Optional[str] = None
+
+    # Payment account — required on every project
+    payment_type: PaymentAccountType
+    payment_number: str
+    payment_name: Optional[str] = None       # auto-filled from Daraja verification
+    account_reference: Optional[str] = None  # only for paybill
 
     @field_validator("target_amount")
     @classmethod
@@ -30,20 +38,34 @@ class ProjectCreateRequest(BaseModel):
             raise ValueError("Title must be at least 3 characters")
         return v.strip()
 
+    @field_validator("payment_number")
+    @classmethod
+    def validate_payment_number(cls, v: str) -> str:
+        cleaned = v.strip().replace(" ", "")
+        if not cleaned.isdigit():
+            raise ValueError("Payment number must contain only digits")
+        if len(cleaned) < 5:
+            raise ValueError("Payment number is too short")
+        return cleaned
+
 
 class ProjectUpdateRequest(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     target_amount: Optional[float] = None
-    visibility: Optional[ProjectVisibility] = None
     is_anonymous: Optional[bool] = None
     deadline: Optional[datetime] = None
     cover_image_url: Optional[str] = None
     status: Optional[ProjectStatus] = None
+    payment_type: Optional[PaymentAccountType] = None
+    payment_number: Optional[str] = None
+    payment_name: Optional[str] = None
+    account_reference: Optional[str] = None
 
 
 class ProjectResponse(BaseModel):
     id: UUID
+    chama_id: UUID
     owner_id: UUID
     title: str
     description: Optional[str]
@@ -51,7 +73,6 @@ class ProjectResponse(BaseModel):
     target_amount: float
     raised_amount: float
     currency: str
-    visibility: ProjectVisibility
     status: ProjectStatus
     is_anonymous: bool
     deadline: Optional[datetime]
@@ -59,6 +80,13 @@ class ProjectResponse(BaseModel):
     deficit: float
     is_funded: bool
     contributor_count: int
+
+    # Payment account info — shown to contributors before paying
+    payment_type: PaymentAccountType
+    payment_number: str
+    payment_name: Optional[str]
+    account_reference: Optional[str]
+
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -69,27 +97,6 @@ class ProjectListResponse(BaseModel):
     total: int
     page: int
     pages: int
-
-
-class InviteMemberRequest(BaseModel):
-    email: Optional[str] = None
-    phone: Optional[str] = None
-
-
-class TeamCreateRequest(BaseModel):
-    name: str
-    description: Optional[str] = None
-
-
-class TeamResponse(BaseModel):
-    id: UUID
-    project_id: UUID
-    name: str
-    description: Optional[str]
-    created_at: datetime
-    total_raised: float
-
-    model_config = {"from_attributes": True}
 
 
 # ── Payments ───────────────────────────────────────────────────────────────────
