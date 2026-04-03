@@ -4,12 +4,11 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.database import create_tables
-from app.routers import auth, projects, payments
+from app.routers import auth, projects, payments, chamas  # ← add chamas
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Only create tables when not running under pytest
     import os
     if os.environ.get("PYTEST_RUNNING") != "1":
         create_tables()
@@ -34,6 +33,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(chamas.router)   # ← chamas before projects
 app.include_router(projects.router)
 app.include_router(payments.router)
 
