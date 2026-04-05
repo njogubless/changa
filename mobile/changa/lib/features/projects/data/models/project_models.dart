@@ -1,9 +1,9 @@
 enum ProjectStatus { active, completed, cancelled, paused }
-
-enum ProjectVisibility { public, private }
+enum PaymentAccountType { paybill, till, pochi }
 
 class ProjectModel {
   final String id;
+  final String chamaId;
   final String ownerId;
   final String title;
   final String? description;
@@ -11,7 +11,6 @@ class ProjectModel {
   final double targetAmount;
   final double raisedAmount;
   final String currency;
-  final ProjectVisibility visibility;
   final ProjectStatus status;
   final bool isAnonymous;
   final DateTime? deadline;
@@ -19,10 +18,18 @@ class ProjectModel {
   final double deficit;
   final bool isFunded;
   final int contributorCount;
+
+  // Payment account
+  final PaymentAccountType paymentType;
+  final String paymentNumber;
+  final String? paymentName;
+  final String? accountReference;
+
   final DateTime createdAt;
 
   const ProjectModel({
     required this.id,
+    required this.chamaId,
     required this.ownerId,
     required this.title,
     this.description,
@@ -30,7 +37,6 @@ class ProjectModel {
     required this.targetAmount,
     required this.raisedAmount,
     required this.currency,
-    required this.visibility,
     required this.status,
     required this.isAnonymous,
     this.deadline,
@@ -38,11 +44,16 @@ class ProjectModel {
     required this.deficit,
     required this.isFunded,
     required this.contributorCount,
+    required this.paymentType,
+    required this.paymentNumber,
+    this.paymentName,
+    this.accountReference,
     required this.createdAt,
   });
 
   factory ProjectModel.fromJson(Map<String, dynamic> json) => ProjectModel(
         id: json['id'] as String,
+        chamaId: json['chama_id'] as String,
         ownerId: json['owner_id'] as String,
         title: json['title'] as String,
         description: json['description'] as String?,
@@ -50,10 +61,6 @@ class ProjectModel {
         targetAmount: (json['target_amount'] as num).toDouble(),
         raisedAmount: (json['raised_amount'] as num).toDouble(),
         currency: json['currency'] as String? ?? 'KES',
-        visibility: ProjectVisibility.values.firstWhere(
-          (e) => e.name == json['visibility'],
-          orElse: () => ProjectVisibility.public,
-        ),
         status: ProjectStatus.values.firstWhere(
           (e) => e.name == json['status'],
           orElse: () => ProjectStatus.active,
@@ -66,6 +73,13 @@ class ProjectModel {
         deficit: (json['deficit'] as num).toDouble(),
         isFunded: json['is_funded'] as bool? ?? false,
         contributorCount: json['contributor_count'] as int? ?? 0,
+        paymentType: PaymentAccountType.values.firstWhere(
+          (e) => e.name == json['payment_type'],
+          orElse: () => PaymentAccountType.till,
+        ),
+        paymentNumber: json['payment_number'] as String,
+        paymentName: json['payment_name'] as String?,
+        accountReference: json['account_reference'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
       );
 }
