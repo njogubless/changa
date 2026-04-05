@@ -8,7 +8,9 @@ import 'package:go_router/go_router.dart';
 
 
 class CreateProjectScreen extends ConsumerStatefulWidget {
-  const CreateProjectScreen({super.key});
+
+  final String chamaId;
+  const CreateProjectScreen({super.key, required this.chamaId});
 
   @override
   ConsumerState<CreateProjectScreen> createState() =>
