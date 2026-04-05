@@ -8,8 +8,8 @@ class ShellScreen extends StatelessWidget {
 
   int _locationToIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
-    if (location.startsWith(AppRoutes.projects)) return 1;
-    if (location.startsWith(AppRoutes.profile)) return 2;
+    //if (location.startsWith(AppRoutes.projects)) return 1;
+    if (location.startsWith(AppRoutes.profile)) return 1;
     return 0; 
   }
 
@@ -25,9 +25,9 @@ class ShellScreen extends StatelessWidget {
           switch (i) {
             case 0:
               context.go(AppRoutes.home);
+            // case 1:
+            //   context.go(AppRoutes.projects);
             case 1:
-              context.go(AppRoutes.projects);
-            case 2:
               context.go(AppRoutes.profile);
           }
         },
