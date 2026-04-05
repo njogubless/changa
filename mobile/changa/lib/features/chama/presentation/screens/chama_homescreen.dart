@@ -1,7 +1,8 @@
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
-import 'package:changa/features/chamas/data/models/chama_models.dart';
-import 'package:changa/features/chamas/presentation/providers/chama_provider.dart';
+import 'package:changa/features/chama/data/models/chama_model.dart';
+import 'package:changa/features/chama/presentation/providers/chama_provider.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';

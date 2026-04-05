@@ -1,7 +1,9 @@
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/auth/presentation/screens/login_screen.dart';
 import 'package:changa/features/auth/presentation/screens/register_screen.dart';
+import 'package:changa/features/chama/presentation/screens/chama_detail_screen.dart';
 import 'package:changa/features/chama/presentation/screens/chama_homescreen.dart';
+import 'package:changa/features/chama/presentation/screens/create_join_chama_screen.dart';
 
 import 'package:changa/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:changa/features/payments/presentation/screens/payment_screen.dart';
@@ -130,6 +132,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.createProject,
         builder: (_, state) => CreateProjectScreen(
           chamaId: state.pathParameters['chamaId']!,
+          
         ),
       ),
       GoRoute(

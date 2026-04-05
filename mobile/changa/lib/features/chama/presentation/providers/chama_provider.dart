@@ -1,6 +1,7 @@
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
-import 'package:changa/features/chamas/data/models/chama_models.dart';
-import 'package:changa/features/chamas/data/repositories/chama_repository.dart';
+import 'package:changa/features/chama/data/models/chama_model.dart';
+import 'package:changa/features/chama/data/repository/chama_repository.dart';
+
 import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

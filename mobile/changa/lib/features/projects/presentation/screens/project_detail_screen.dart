@@ -120,19 +120,19 @@ class _ProjectHeader extends StatelessWidget {
               StatusBadge(status: project.status),
             ],
           ),
-          if (project.visibility == ProjectVisibility.private) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.lock_outline,
-                    size: 14, color: AppColors.gold),
-                const SizedBox(width: 4),
-                Text('Private project',
-                    style: AppTextStyles.caption
-                        .copyWith(color: AppColors.gold)),
-              ],
-            ),
-          ],
+          // if (project.visibility == ProjectVisibility.private) ...[
+          //   const SizedBox(height: 6),
+          //   Row(
+          //     children: [
+          //       const Icon(Icons.lock_outline,
+          //           size: 14, color: AppColors.gold),
+          //       const SizedBox(width: 4),
+          //       Text('Private project',
+          //           style: AppTextStyles.caption
+          //               .copyWith(color: AppColors.gold)),
+          //     ],
+          //   ),
+          // ],
         ],
       );
 }

@@ -45,8 +45,8 @@ class ProjectCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      if (project.visibility == ProjectVisibility.private)
-                        _Badge(label: 'Private', color: AppColors.gold),
+                      // if (project.visibility == ProjectVisibility.private)
+                      //   _Badge(label: 'Private', color: AppColors.gold),
                     ],
                   ),
                   if (project.description != null) ...[

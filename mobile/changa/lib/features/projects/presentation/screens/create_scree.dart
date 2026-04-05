@@ -1,5 +1,6 @@
 import 'package:changa/core/themes/app_theme.dart';
-import 'package:changa/features/chamas/presentation/providers/chama_provider.dart';
+import 'package:changa/features/chama/presentation/providers/chama_provider.dart';
+
 import 'package:changa/features/projects/presentation/widgets/project_form_fields.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

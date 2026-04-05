@@ -32,7 +32,7 @@ class _EditProjectScreenState extends ConsumerState<EditProjectScreen> {
     _descCtrl = TextEditingController(text: widget.project.description ?? '');
     _amountCtrl = TextEditingController(
         text: widget.project.targetAmount.toInt().toString());
-    _visibility = widget.project.visibility.name;
+    //_visibility = widget.project.visibility.name;
     _isAnonymous = widget.project.isAnonymous;
     _deadline = widget.project.deadline;
   }

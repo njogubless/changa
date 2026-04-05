@@ -1,5 +1,6 @@
 import 'package:changa/core/network/api_client.dart';
-import 'package:changa/features/chamas/data/models/chama_models.dart';
+import 'package:changa/features/chama/data/models/chama_model.dart';
+
 import 'package:changa/features/projects/data/models/project_models.dart';
 
 class ChamaRepository {
