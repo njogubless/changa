@@ -2,7 +2,6 @@ import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/chama/data/models/chama_model.dart';
 import 'package:changa/features/chama/presentation/providers/chama_provider.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -18,12 +17,14 @@ class ChamasHomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.cream,
+      // ── Hamburger opens the drawer ──────────────────────────────────
+      drawer: null, // drawer is on ShellScreen, trigger it from there
       body: RefreshIndicator(
         color: AppColors.forest,
         onRefresh: () => ref.read(chamaListProvider.notifier).refresh(),
         child: CustomScrollView(
           slivers: [
-            // ── Header ──────────────────────────────────────────────────
+            // ── Header ────────────────────────────────────────────────
             SliverAppBar(
               expandedHeight: 130,
               floating: true,
@@ -31,6 +32,12 @@ class ChamasHomeScreen extends ConsumerWidget {
               pinned: false,
               backgroundColor: AppColors.forest,
               automaticallyImplyLeading: false,
+              leading: Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.menu, color: AppColors.cream),
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
+                ),
+              ),
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
                   color: AppColors.forest,
@@ -60,7 +67,33 @@ class ChamasHomeScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Content ─────────────────────────────────────────────────
+            // ── Join / Create — always visible at top ─────────────────
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _PrimaryAction(
+                        icon: Icons.group_add_outlined,
+                        label: 'Join Chama',
+                        onTap: () => context.push('/chamas/join'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _PrimaryAction(
+                        icon: Icons.add_circle_outline,
+                        label: 'Create Chama',
+                        onTap: () => context.push('/chamas/create'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Content ───────────────────────────────────────────────
             if (state.isLoading)
               const SliverFillRemaining(
                 child: Center(
@@ -72,18 +105,16 @@ class ChamasHomeScreen extends ConsumerWidget {
               )
             else if (state.error != null)
               SliverFillRemaining(
-                child: _ChamasErrorState(
+                child: _ErrorState(
                   onRetry: () =>
                       ref.read(chamaListProvider.notifier).refresh(),
                 ),
               )
             else if (state.chamas.isEmpty)
-              SliverFillRemaining(
-                child: _ChamasEmptyState(),
-              )
-            else ...[
+              const SliverFillRemaining(child: _EmptyState())
+            else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (_, i) => Padding(
@@ -94,31 +125,6 @@ class ChamasHomeScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-            ],
-
-            // ── Join / Create actions ────────────────────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                child: Column(
-                  children: [
-                    _ActionTile(
-                      icon: Icons.group_add_outlined,
-                      label: 'Join a Chama',
-                      subtitle: 'Enter an invite code',
-                      onTap: () => context.push('/chamas/join'),
-                    ),
-                    const SizedBox(height: 10),
-                    _ActionTile(
-                      icon: Icons.add_circle_outline,
-                      label: 'Create a Chama',
-                      subtitle: 'Start a new group',
-                      onTap: () => context.push('/chamas/create'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
@@ -126,10 +132,57 @@ class ChamasHomeScreen extends ConsumerWidget {
   }
 }
 
+// ── Primary action buttons (Join / Create) ─────────────────────────────────
+class _PrimaryAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _PrimaryAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: AppColors.forest,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: AppColors.cream, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.cream,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
 // ── Chama card ─────────────────────────────────────────────────────────────
 class _ChamaCard extends StatelessWidget {
   final ChamaModel chama;
   const _ChamaCard({required this.chama});
+
+  Color _parseColor(String hex) {
+    try {
+      return Color(int.parse(hex.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      return AppColors.forest;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,7 +212,6 @@ class _ChamaCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Avatar
             Container(
               width: 52,
               height: 52,
@@ -179,7 +231,6 @@ class _ChamaCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 14),
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,24 +259,11 @@ class _ChamaCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(
-              Icons.chevron_right,
-              color: AppColors.sand,
-              size: 20,
-            ),
+            const Icon(Icons.chevron_right, color: AppColors.sand, size: 20),
           ],
         ),
       ),
     );
-  }
-
-  Color _parseColor(String hex) {
-    try {
-      return Color(
-          int.parse(hex.replaceFirst('#', '0xFF')));
-    } catch (_) {
-      return AppColors.forest;
-    }
   }
 }
 
@@ -240,74 +278,15 @@ class _Chip extends StatelessWidget {
           Icon(icon, size: 12, color: AppColors.green),
           const SizedBox(width: 3),
           Text(label,
-              style:
-                  AppTextStyles.caption.copyWith(color: AppColors.green)),
+              style: AppTextStyles.caption.copyWith(color: AppColors.green)),
         ],
       );
 }
 
-// ── Action tile ────────────────────────────────────────────────────────────
-class _ActionTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final VoidCallback onTap;
+// ── Empty state ────────────────────────────────────────────────────────────
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
 
-  const _ActionTile({
-    required this.icon,
-    required this.label,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: AppColors.sand.withValues(alpha: 0.5)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.forest.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child:
-                    Icon(icon, color: AppColors.forest, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.forest,
-                            fontWeight: FontWeight.w600)),
-                    Text(subtitle,
-                        style: AppTextStyles.caption
-                            .copyWith(color: AppColors.green)),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right,
-                  color: AppColors.sand, size: 18),
-            ],
-          ),
-        ),
-      );
-}
-
-// ── Empty & error states ───────────────────────────────────────────────────
-class _ChamasEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
@@ -327,13 +306,12 @@ class _ChamasEmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text('No Chamas yet',
-                  style:
-                      AppTextStyles.h3.copyWith(color: AppColors.forest)),
+                  style: AppTextStyles.h3.copyWith(color: AppColors.forest)),
               const SizedBox(height: 8),
               Text(
-                'Create a Chama or join one\nwith an invite code.',
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: AppColors.green),
+                'Use the buttons above to create\nor join a Chama.',
+                style:
+                    AppTextStyles.bodySmall.copyWith(color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -342,9 +320,10 @@ class _ChamasEmptyState extends StatelessWidget {
       );
 }
 
-class _ChamasErrorState extends StatelessWidget {
+// ── Error state ────────────────────────────────────────────────────────────
+class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
-  const _ChamasErrorState({required this.onRetry});
+  const _ErrorState({required this.onRetry});
 
   @override
   Widget build(BuildContext context) => Center(
@@ -357,8 +336,7 @@ class _ChamasErrorState extends StatelessWidget {
                   color: AppColors.sand, size: 48),
               const SizedBox(height: 16),
               Text('Could not load Chamas',
-                  style:
-                      AppTextStyles.h4.copyWith(color: AppColors.forest)),
+                  style: AppTextStyles.h4.copyWith(color: AppColors.forest)),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: onRetry,
