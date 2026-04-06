@@ -1,18 +1,21 @@
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/auth/presentation/screens/login_screen.dart';
 import 'package:changa/features/auth/presentation/screens/register_screen.dart';
+import 'package:changa/features/budget/presentation/screens/budget_screen..dart';
 import 'package:changa/features/chama/presentation/screens/chama_detail_screen.dart';
 import 'package:changa/features/chama/presentation/screens/chama_homescreen.dart';
 import 'package:changa/features/chama/presentation/screens/create_join_chama_screen.dart';
-
 import 'package:changa/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:changa/features/payments/presentation/screens/payment_screen.dart';
 import 'package:changa/features/payments/presentation/screens/payment_status_screen.dart';
 import 'package:changa/features/profile/presentation/screens/profile_screen.dart';
 import 'package:changa/features/projects/data/models/project_models.dart';
+import 'package:changa/features/projects/presentation/screens/all_projects_screen.dart';
+
 import 'package:changa/features/projects/presentation/screens/create_project_screen.dart';
 import 'package:changa/features/projects/presentation/screens/edit_project_screen.dart';
 import 'package:changa/features/projects/presentation/screens/project_detail_screen.dart';
+
 import 'package:changa/features/splash/presentation/screens/splash_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,12 +29,13 @@ class AppRoutes {
   static const register = '/register';
   static const home = '/home';
   static const profile = '/profile';
+  static const allProjects = '/projects';
+  static const budget = '/budget';
 
   // Chamas
   static const chamaDetail = '/chamas/:id';
   static const createChama = '/chamas/create';
   static const joinChama = '/chamas/join';
-  static const chamaSettings = '/chamas/:id/settings';
   static String chamaDetailPath(String id) => '/chamas/$id';
 
   // Projects
@@ -97,22 +101,32 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: AppRoutes.register,
           builder: (_, __) => const RegisterScreen()),
 
-      // ── Shell (bottom nav) ──────────────────────────────────────────
+      // ── Shell (bottom nav: Home, Projects, Budget) ──────────────────
       ShellRoute(
         builder: (_, __, child) => ShellScreen(child: child),
         routes: [
           GoRoute(
             path: AppRoutes.home,
-            builder: (_, __) => const ChamasHomeScreen(), // ← updated
+            builder: (_, __) => const ChamasHomeScreen(),
           ),
           GoRoute(
-            path: AppRoutes.profile,
-            builder: (_, __) => const ProfileScreen(),
+            path: AppRoutes.allProjects,
+            builder: (_, __) => const AllProjectsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.budget,
+            builder: (_, __) => const BudgetPlaceholderScreen(),
           ),
         ],
       ),
 
-      // ── Chama routes (full screen, no bottom nav) ────────────────────
+      // ── Profile (pushed from drawer, no bottom nav) ─────────────────
+      GoRoute(
+        path: AppRoutes.profile,
+        builder: (_, __) => const ProfileScreen(),
+      ),
+
+      // ── Chama routes ────────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.createChama,
         builder: (_, __) => const CreateChamaScreen(),
@@ -127,12 +141,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             ChamaDetailScreen(chamaId: state.pathParameters['id']!),
       ),
 
-      // ── Project routes ───────────────────────────────────────────────
+      // ── Project routes ──────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.createProject,
         builder: (_, state) => CreateProjectScreen(
           chamaId: state.pathParameters['chamaId']!,
-          
         ),
       ),
       GoRoute(
@@ -146,7 +159,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             EditProjectScreen(project: state.extra as ProjectModel),
       ),
 
-      // ── Payment routes ───────────────────────────────────────────────
+      // ── Payment routes ──────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.payment,
         builder: (_, state) => PaymentScreen(
