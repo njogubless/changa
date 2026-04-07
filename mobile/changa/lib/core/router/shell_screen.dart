@@ -34,10 +34,14 @@ class ShellScreen extends ConsumerWidget {
         user: user,
         scaffoldKey: _scaffoldKey,
         ),
-      body: child,
+      body: ColoredBox(
+        color: AppColors.cream,
+        child: child),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
         backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shadowColor: Colors.transparent,
         indicatorColor: AppColors.forest.withValues(alpha: 0.1),
         onDestinationSelected: (i) {
           switch (i) {
