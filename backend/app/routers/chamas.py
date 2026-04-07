@@ -114,9 +114,19 @@ def get_chama(
     chama = _get_chama_or_404(chama_id, db)
     _assert_member(chama, current_user, db)
 
-    response = ChamaDetailResponse.model_validate(chama)
-    response.members = [_member_response(m) for m in chama.members]
-    return response
+    return ChamaDetailResponse(
+        id=chama.id,
+        owner_id=chama.owner_id,
+        name=chama.name,
+        description=chama.description,
+        avatar_color=chama.avatar_color,
+        invite_code=chama.invite_code,
+        is_active=chama.is_active,
+        member_count=chama.member_count,
+        active_project_count=chama.active_project_count,
+        created_at=chama.created_at,
+        members=[_member_response(m) for m in chama.members],
+    )
 
 
 # ── Update chama ───────────────────────────────────────────────────────────────
