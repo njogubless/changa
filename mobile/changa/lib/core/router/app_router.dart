@@ -12,7 +12,7 @@ import 'package:changa/features/profile/presentation/screens/profile_screen.dart
 import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:changa/features/projects/presentation/screens/all_projects_screen.dart';
 
-import 'package:changa/features/projects/presentation/screens/create_project_screen.dart';
+import 'package:changa/features/projects/presentation/screens/create_screen.dart';
 import 'package:changa/features/projects/presentation/screens/edit_project_screen.dart';
 import 'package:changa/features/projects/presentation/screens/project_detail_screen.dart';
 
