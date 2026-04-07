@@ -115,9 +115,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         width: active ? 24 : 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color: active
-                              ? AppColors.forest
-                              : AppColors.sand,
+                          color: active ? AppColors.forest : AppColors.sand,
                           borderRadius: BorderRadius.circular(4),
                         ),
                       );
@@ -133,9 +131,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const SizedBox(height: 12),
 
                   // Already have account
-                  if (isLast)
-                    TextButton(
-                      onPressed: () => context.go(AppRoutes.login),
+                  AnimatedOpacity(
+                    opacity: isLast ? 1.0 : 0.0,
+                    duration: Duration(milliseconds: 300),
+                    child: TextButton(
+                      onPressed:
+                          isLast ? () => context.go(AppRoutes.login) : null,
                       child: Text(
                         'Already have an account? Sign in',
                         style: AppTextStyles.bodySmall.copyWith(
@@ -143,6 +144,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                       ),
                     ),
+                  ),
+                  // if (isLast)
+                  //   TextButton(
+                  //     onPressed: () => context.go(AppRoutes.login),
+                  //     child: Text(
+                  //       'Already have an account? Sign in',
+                  //       style: AppTextStyles.bodySmall.copyWith(
+                  //         color: AppColors.green,
+                  //       ),
+                  //     ),
+                  //   ),
                 ],
               ),
             ),
@@ -204,16 +216,17 @@ class _OnboardingIllustration extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size.height < 700 ? 160.0 : 220.0;
     return Container(
-      width: 220,
-      height: 220,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         color: accent.withValues(alpha: 0.1),
         shape: BoxShape.circle,
       ),
       child: Center(
         child: CustomPaint(
-          size: const Size(140, 140),
+          size: Size(size * 0.64, size * 0.64),
           painter: _IllustrationPainter(type: type, accent: accent),
         ),
       ),
@@ -256,7 +269,11 @@ class _IllustrationPainter extends CustomPainter {
       // Body
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(p.dx, p.dy + 22), width: 18, height: 22),
+          Rect.fromCenter(
+            center: Offset(p.dx, p.dy + 22),
+            width: 18,
+            height: 22,
+          ),
           const Radius.circular(9),
         ),
         paint,
@@ -264,31 +281,35 @@ class _IllustrationPainter extends CustomPainter {
     }
 
     // Arrow converging to center coin
-    final arrowPaint = Paint()
-      ..color = accent
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final arrowPaint =
+        Paint()
+          ..color = accent
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
     final center = Offset(size.width * 0.5, size.height * 0.72);
     for (final p in positions) {
-      canvas.drawLine(
-        Offset(p.dx, p.dy + 35),
-        center,
-        arrowPaint,
-      );
+      canvas.drawLine(Offset(p.dx, p.dy + 35), center, arrowPaint);
     }
 
     // Coin
     canvas.drawCircle(center, 16, accentP);
-  
+
     final tp = TextPainter(
       text: TextSpan(
         text: 'KES',
-        style: TextStyle(color: AppColors.cream, fontSize: 9, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: AppColors.cream,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    tp.paint(
+      canvas,
+      Offset(center.dx - tp.width / 2, center.dy - tp.height / 2),
+    );
   }
 
   void _drawPayment(Canvas canvas, Size size) {
@@ -322,11 +343,12 @@ class _IllustrationPainter extends CustomPainter {
     );
 
     // Signal waves
-    final wavePaint = Paint()
-      ..color = accent.withValues(alpha: 0.6)
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
+    final wavePaint =
+        Paint()
+          ..color = accent.withValues(alpha: 0.6)
+          ..strokeWidth = 2.5
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round;
     for (int i = 1; i <= 3; i++) {
       canvas.drawArc(
         Rect.fromCenter(
@@ -337,7 +359,8 @@ class _IllustrationPainter extends CustomPainter {
         -1.2,
         1.0,
         false,
-        wavePaint..color = accent.withValues(alpha: (0.9 - i * 0.2).clamp(0.2, 0.9)),
+        wavePaint
+          ..color = accent.withValues(alpha: (0.9 - i * 0.2).clamp(0.2, 0.9)),
       );
     }
   }
