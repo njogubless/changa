@@ -15,118 +15,117 @@ class ChamasHomeScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final firstName = user?.fullName.split(' ').first ?? '';
 
-    return Scaffold(
-      backgroundColor: AppColors.cream,
-      body: RefreshIndicator(
-        color: AppColors.forest,
-        onRefresh: () => ref.read(chamaListProvider.notifier).refresh(),
-        child: CustomScrollView(
-          slivers: [
-            // ── Header ──────────────────────────────────────────────
-            SliverAppBar(
-              expandedHeight: 130,
-              floating: true,
-              snap: true,
-              pinned: false,
-              backgroundColor: AppColors.forest,
-              automaticallyImplyLeading: false,
-              leading: Builder(
-                // Builder gives us the correct context to find
-                // the Scaffold that owns the drawer (ShellScreen)
-                builder: (ctx) => IconButton(
-                  icon: const Icon(Icons.menu, color: AppColors.cream),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
-                ),
-              ),
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  color: AppColors.forest,
-                  padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        firstName.isNotEmpty
-                            ? 'Habari, $firstName 👋'
-                            : 'Habari 👋',
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.mint),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Your Chamas',
-                        style: AppTextStyles.h2.copyWith(
-                          color: AppColors.cream,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+    // No Scaffold here — ShellScreen's Scaffold owns the drawer.
+    // Scaffold.of(ctx) inside the Builder will correctly walk up to it.
+    return RefreshIndicator(
+      color: AppColors.forest,
+      onRefresh: () => ref.read(chamaListProvider.notifier).refresh(),
+      child: CustomScrollView(
+        slivers: [
+          // ── Header ──────────────────────────────────────────────
+          SliverAppBar(
+            expandedHeight: 130,
+            floating: true,
+            snap: true,
+            pinned: false,
+            backgroundColor: AppColors.forest,
+            automaticallyImplyLeading: false,
+            leading: Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.menu, color: AppColors.cream),
+                // ctx is a descendant of ShellScreen's Scaffold, so
+                // Scaffold.of(ctx) correctly finds the one with the drawer.
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
               ),
             ),
-
-            // ── Join / Create — always visible ───────────────────────
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                color: AppColors.forest,
+                padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Expanded(
-                      child: _PrimaryAction(
-                        icon: Icons.group_add_outlined,
-                        label: 'Join Chama',
-                        onTap: () => context.push('/chamas/join'),
-                      ),
+                    Text(
+                      firstName.isNotEmpty
+                          ? 'Habari, $firstName 👋'
+                          : 'Habari 👋',
+                      style: AppTextStyles.bodySmall
+                          .copyWith(color: AppColors.mint),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PrimaryAction(
-                        icon: Icons.add_circle_outline,
-                        label: 'Create Chama',
-                        onTap: () => context.push('/chamas/create'),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Your Chamas',
+                      style: AppTextStyles.h2.copyWith(
+                        color: AppColors.cream,
+                        height: 1.2,
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+          ),
 
-            // ── Chama list / states ──────────────────────────────────
-            if (state.isLoading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.forest,
-                    strokeWidth: 2,
-                  ),
-                ),
-              )
-            else if (state.error != null)
-              SliverFillRemaining(
-                child: _ErrorState(
-                  onRetry: () =>
-                      ref.read(chamaListProvider.notifier).refresh(),
-                ),
-              )
-            else if (state.chamas.isEmpty)
-              const SliverFillRemaining(child: _EmptyState())
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (_, i) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _ChamaCard(chama: state.chamas[i]),
+          // ── Join / Create — always visible ───────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _PrimaryAction(
+                      icon: Icons.group_add_outlined,
+                      label: 'Join Chama',
+                      onTap: () => context.push('/chamas/join'),
                     ),
-                    childCount: state.chamas.length,
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _PrimaryAction(
+                      icon: Icons.add_circle_outline,
+                      label: 'Create Chama',
+                      onTap: () => context.push('/chamas/create'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Chama list / states ──────────────────────────────────
+          if (state.isLoading)
+            const SliverFillRemaining(
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.forest,
+                  strokeWidth: 2,
                 ),
               ),
-          ],
-        ),
+            )
+          else if (state.error != null)
+            SliverFillRemaining(
+              child: _ErrorState(
+                onRetry: () =>
+                    ref.read(chamaListProvider.notifier).refresh(),
+              ),
+            )
+          else if (state.chamas.isEmpty)
+            const SliverFillRemaining(child: _EmptyState())
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (_, i) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ChamaCard(chama: state.chamas[i]),
+                  ),
+                  childCount: state.chamas.length,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
