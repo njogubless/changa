@@ -8,7 +8,12 @@ import 'app_router.dart';
 
 class ShellScreen extends ConsumerWidget {
   final Widget child;
-  const ShellScreen({super.key, required this.child});
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+  ShellScreen({
+    super.key, 
+    required this.child,
+    
+     });
 
   int _locationToIndex(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
@@ -23,7 +28,12 @@ class ShellScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
 
     return Scaffold(
-      drawer: AppDrawer(user: user),
+      key: _scaffoldKey,
+      backgroundColor: AppColors.cream,
+      drawer: AppDrawer(
+        user: user,
+        scaffoldKey: _scaffoldKey,
+        ),
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,

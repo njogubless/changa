@@ -7,17 +7,20 @@ import 'package:go_router/go_router.dart';
 
 class AppDrawer extends ConsumerWidget {
   final UserModel? user;
-  const AppDrawer({super.key, required this.user});
+  const AppDrawer({super.key, required this.user, required this.scaffoldKey});
+
+  final GlobalKey<ScaffoldState> scaffoldKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final initials = (user?.fullName ?? 'U')
-        .trim()
-        .split(' ')
-        .where((e) => e.isNotEmpty)
-        .take(2)
-        .map((e) => e[0].toUpperCase())
-        .join();
+    final initials =
+        (user?.fullName ?? 'U')
+            .trim()
+            .split(' ')
+            .where((e) => e.isNotEmpty)
+            .take(2)
+            .map((e) => e[0].toUpperCase())
+            .join();
 
     return Drawer(
       backgroundColor: AppColors.cream,
@@ -41,9 +44,10 @@ class AppDrawer extends ConsumerWidget {
             _DrawerItem(
               icon: Icons.person_outline,
               label: 'Profile',
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(context);
-                context.push('/profile');
+                await context.push('/profile');
+                scaffoldKey.currentState?.openDrawer();
               },
             ),
             _DrawerItem(
@@ -51,7 +55,6 @@ class AppDrawer extends ConsumerWidget {
               label: 'Settings',
               onTap: () {
                 Navigator.pop(context);
-                // TODO: settings screen
               },
             ),
             _DrawerItem(
@@ -99,58 +102,57 @@ class _DrawerHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(24),
-          color: AppColors.forest,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    onTap: onTap,
+    child: Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      color: AppColors.forest,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 32,
+            backgroundColor: AppColors.sage.withValues(alpha: 0.3),
+            child: Text(
+              initials,
+              style: AppTextStyles.h3.copyWith(
+                color: AppColors.cream,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            userName,
+            style: AppTextStyles.h4.copyWith(
+              color: AppColors.cream,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            userEmail,
+            style: AppTextStyles.caption.copyWith(color: AppColors.mint),
+          ),
+          const SizedBox(height: 4),
+          Row(
             children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: AppColors.sage.withValues(alpha: 0.3),
-                child: Text(
-                  initials,
-                  style: AppTextStyles.h3.copyWith(
-                    color: AppColors.cream,
-                    fontWeight: FontWeight.w800,
-                  ),
+              Text(
+                'View profile',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.mint,
+                  decoration: TextDecoration.underline,
+                  decorationColor: AppColors.mint,
                 ),
               ),
-              const SizedBox(height: 12),
-              Text(
-                userName,
-                style: AppTextStyles.h4.copyWith(
-                  color: AppColors.cream,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                userEmail,
-                style: AppTextStyles.caption.copyWith(color: AppColors.mint),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Text(
-                    'View profile',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.mint,
-                      decoration: TextDecoration.underline,
-                      decorationColor: AppColors.mint,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.chevron_right,
-                      color: AppColors.mint, size: 14),
-                ],
-              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, color: AppColors.mint, size: 14),
             ],
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Menu item ──────────────────────────────────────────────────────────────
@@ -167,23 +169,22 @@ class _DrawerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        leading: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.forest.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, color: AppColors.forest, size: 18),
-        ),
-        title: Text(
-          label,
-          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.forest),
-        ),
-        trailing: const Icon(Icons.chevron_right,
-            color: AppColors.sand, size: 18),
-        onTap: onTap,
-      );
+    leading: Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: AppColors.forest.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, color: AppColors.forest, size: 18),
+    ),
+    title: Text(
+      label,
+      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.forest),
+    ),
+    trailing: const Icon(Icons.chevron_right, color: AppColors.sand, size: 18),
+    onTap: onTap,
+  );
 }
 
 // ── Logout button ──────────────────────────────────────────────────────────
@@ -193,34 +194,32 @@ class _DrawerLogout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.error.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.error.withValues(alpha: 0.2),
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    child: GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.logout, color: AppColors.error, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'Sign out',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.error,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.logout, color: AppColors.error, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Sign out',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ),
-      );
+      ),
+    ),
+  );
 }
