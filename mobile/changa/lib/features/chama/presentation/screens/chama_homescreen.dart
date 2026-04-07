@@ -17,14 +17,12 @@ class ChamasHomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppColors.cream,
-      // ── Hamburger opens the drawer ──────────────────────────────────
-      drawer: null, // drawer is on ShellScreen, trigger it from there
       body: RefreshIndicator(
         color: AppColors.forest,
         onRefresh: () => ref.read(chamaListProvider.notifier).refresh(),
         child: CustomScrollView(
           slivers: [
-            // ── Header ────────────────────────────────────────────────
+            // ── Header ──────────────────────────────────────────────
             SliverAppBar(
               expandedHeight: 130,
               floating: true,
@@ -33,6 +31,8 @@ class ChamasHomeScreen extends ConsumerWidget {
               backgroundColor: AppColors.forest,
               automaticallyImplyLeading: false,
               leading: Builder(
+                // Builder gives us the correct context to find
+                // the Scaffold that owns the drawer (ShellScreen)
                 builder: (ctx) => IconButton(
                   icon: const Icon(Icons.menu, color: AppColors.cream),
                   onPressed: () => Scaffold.of(ctx).openDrawer(),
@@ -67,7 +67,7 @@ class ChamasHomeScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Join / Create — always visible at top ─────────────────
+            // ── Join / Create — always visible ───────────────────────
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -93,7 +93,7 @@ class ChamasHomeScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Content ───────────────────────────────────────────────
+            // ── Chama list / states ──────────────────────────────────
             if (state.isLoading)
               const SliverFillRemaining(
                 child: Center(
@@ -132,7 +132,7 @@ class ChamasHomeScreen extends ConsumerWidget {
   }
 }
 
-// ── Primary action buttons (Join / Create) ─────────────────────────────────
+// ── Primary action buttons ─────────────────────────────────────────────────
 class _PrimaryAction extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -259,7 +259,8 @@ class _ChamaCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.sand, size: 20),
+            const Icon(Icons.chevron_right,
+                color: AppColors.sand, size: 20),
           ],
         ),
       ),
@@ -278,7 +279,8 @@ class _Chip extends StatelessWidget {
           Icon(icon, size: 12, color: AppColors.green),
           const SizedBox(width: 3),
           Text(label,
-              style: AppTextStyles.caption.copyWith(color: AppColors.green)),
+              style:
+                  AppTextStyles.caption.copyWith(color: AppColors.green)),
         ],
       );
 }
@@ -306,12 +308,13 @@ class _EmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               Text('No Chamas yet',
-                  style: AppTextStyles.h3.copyWith(color: AppColors.forest)),
+                  style:
+                      AppTextStyles.h3.copyWith(color: AppColors.forest)),
               const SizedBox(height: 8),
               Text(
                 'Use the buttons above to create\nor join a Chama.',
-                style:
-                    AppTextStyles.bodySmall.copyWith(color: AppColors.green),
+                style: AppTextStyles.bodySmall
+                    .copyWith(color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -336,7 +339,8 @@ class _ErrorState extends StatelessWidget {
                   color: AppColors.sand, size: 48),
               const SizedBox(height: 16),
               Text('Could not load Chamas',
-                  style: AppTextStyles.h4.copyWith(color: AppColors.forest)),
+                  style:
+                      AppTextStyles.h4.copyWith(color: AppColors.forest)),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: onRetry,
