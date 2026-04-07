@@ -115,7 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: AppRoutes.budget,
-            builder: (_, __) => const BudgetPlaceholderScreen(),
+            builder: (_, __) => const BudgetScreen(),
           ),
         ],
       ),
