@@ -147,12 +147,15 @@ void showChangePasswordSheet(BuildContext context, WidgetRef ref) {
                           ),
                         ),
                         validator: (v) {
-                          if (v == null || v.length < 8)
+                          if (v == null || v.length < 8) {
                             return 'Min 8 characters';
-                          if (!v.contains(RegExp(r'[A-Za-z]')))
+                          }
+                          if (!v.contains(RegExp(r'[A-Za-z]'))) {
                             return 'Must contain a letter';
-                          if (!v.contains(RegExp(r'\d')))
+                          }
+                          if (!v.contains(RegExp(r'\d'))) {
                             return 'Must contain a number';
+                          }
                           return null;
                         },
                       ),
