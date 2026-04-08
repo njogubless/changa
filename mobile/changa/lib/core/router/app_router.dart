@@ -2,6 +2,7 @@ import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/auth/presentation/screens/login_screen.dart';
 import 'package:changa/features/auth/presentation/screens/register_screen.dart';
 import 'package:changa/features/budget/presentation/screens/budget_screen.dart';
+import 'package:changa/features/budget/presentation/screens/create_budget_screen.dart';
 import 'package:changa/features/chama/presentation/screens/chama_detail_screen.dart';
 import 'package:changa/features/chama/presentation/screens/chama_homescreen.dart';
 import 'package:changa/features/chama/presentation/screens/create_join_chama_screen.dart';
@@ -55,7 +56,7 @@ class AppRoutes {
 
   //budget
   static const budgetDetail = '/budget/:id';
-  static const createBudget = 'budget/create';
+  static const createBudget = '/budget/create';
   static String budgetDetailPath(String id) => '/budget/$id';
 }
 
@@ -164,6 +165,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             (_, state) =>
                 EditProjectScreen(project: state.extra as ProjectModel),
       ),
+
+      // ── Budget routes ──────────────────────────────────────────────
+   
+      GoRoute(
+        path: AppRoutes.createBudget,
+        builder: (_, __) => const CreateBudgetScreen(),
+      ),
+      // GoRoute(
+      //   path: AppRoutes.budgetDetail, // '/budget/:id'
+      //   builder:
+      //       (_, state) =>
+      //           BudgetDetailScreen(budgetId: state.pathParameters['id']!),
+      // ),
 
       // ── Payment routes ──────────────────────────────────────────────
       GoRoute(
