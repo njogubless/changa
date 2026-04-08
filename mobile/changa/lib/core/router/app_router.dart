@@ -6,6 +6,7 @@ import 'package:changa/features/budget/presentation/screens/budget_screen.dart';
 import 'package:changa/features/budget/presentation/screens/create_budget_screen.dart';
 import 'package:changa/features/chama/presentation/screens/chama_detail_screen.dart';
 import 'package:changa/features/chama/presentation/screens/chama_homescreen.dart';
+import 'package:changa/features/chama/presentation/screens/chama_settings.dart';
 import 'package:changa/features/chama/presentation/screens/create_join_chama_screen.dart';
 import 'package:changa/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:changa/features/payments/presentation/screens/payment_screen.dart';
@@ -57,6 +58,9 @@ class AppRoutes {
   static const createBudget = '/budget/create';
   static const budgetDetail = '/budget/:id';
   static String budgetDetailPath(String id) => '/budget/$id';
+
+  static const chamaSettings = '/chamas/:id/settings';
+  static String chamaSettingsPath(String id) => '/chamas/$id/settings';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -93,8 +97,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
     },
     routes: [
-      GoRoute(
-          path: AppRoutes.splash, builder: (_, __) => const SplashScreen()),
+      GoRoute(path: AppRoutes.splash, builder: (_, __) => const SplashScreen()),
       GoRoute(
         path: AppRoutes.onboarding,
         builder: (_, __) => const OnboardingScreen(),
@@ -141,55 +144,63 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.chamaDetail,
-        builder: (_, state) =>
-            ChamaDetailScreen(chamaId: state.pathParameters['id']!),
+        builder:
+            (_, state) =>
+                ChamaDetailScreen(chamaId: state.pathParameters['id']!),
       ),
 
       // ── Project routes ───────────────────────────────────────────
       GoRoute(
         path: AppRoutes.createProject,
-        builder: (_, state) =>
-            CreateProjectScreen(chamaId: state.pathParameters['chamaId']!),
+        builder:
+            (_, state) =>
+                CreateProjectScreen(chamaId: state.pathParameters['chamaId']!),
       ),
       GoRoute(
         path: AppRoutes.projectDetail,
-        builder: (_, state) =>
-            ProjectDetailScreen(projectId: state.pathParameters['id']!),
+        builder:
+            (_, state) =>
+                ProjectDetailScreen(projectId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/projects/:id/edit',
-        builder: (_, state) =>
-            EditProjectScreen(project: state.extra as ProjectModel),
+        builder:
+            (_, state) =>
+                EditProjectScreen(project: state.extra as ProjectModel),
       ),
 
       // ── Budget routes ─────────────────────────────────────────────
-      
       GoRoute(
-        path: AppRoutes.createBudget,           // '/budget/create'
+        path: AppRoutes.createBudget, // '/budget/create'
         builder: (_, __) => const CreateBudgetScreen(),
       ),
       GoRoute(
-        path: AppRoutes.budgetDetail,            // '/budget/:id'
-        builder: (_, state) => BudgetDetailScreen(
-          budgetId: state.pathParameters['id']!,
-        ),
+        path: AppRoutes.budgetDetail, // '/budget/:id'
+        builder:
+            (_, state) =>
+                BudgetDetailScreen(budgetId: state.pathParameters['id']!),
       ),
 
       // ── Payment routes ────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.payment,
-        builder: (_, state) => PaymentScreen(
-          projectId: state.uri.queryParameters['project_id']!,
-        ),
+        builder:
+            (_, state) => PaymentScreen(
+              projectId: state.uri.queryParameters['project_id']!,
+            ),
       ),
       GoRoute(
         path: AppRoutes.paymentStatus,
-        builder: (_, state) => PaymentStatusScreen(
-          reference: state.uri.queryParameters['ref']!,
-          amount:
-              double.parse(state.uri.queryParameters['amount'] ?? '0'),
-        ),
+        builder:
+            (_, state) => PaymentStatusScreen(
+              reference: state.uri.queryParameters['ref']!,
+              amount: double.parse(state.uri.queryParameters['amount'] ?? '0'),
+            ),
       ),
+      GoRoute(
+        path: '/chamas:id/settings',
+        builder: (_, state)=> ChamaSettingsScreen(
+          chamaId:state.pathParameters['id']!,),),
     ],
   );
 });
