@@ -229,6 +229,7 @@ class _JoinChamaScreenState extends ConsumerState<JoinChamaScreen> {
     final isLoading = ref.watch(joinChamaProvider).isLoading;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.cream,
       appBar: AppBar(
         backgroundColor: AppColors.forest,
@@ -239,88 +240,91 @@ class _JoinChamaScreenState extends ConsumerState<JoinChamaScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icon
-            Center(
-              child: Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.sage.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Icon
+              Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: AppColors.sage.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.group_add_outlined,
+                      color: AppColors.forest, size: 36),
                 ),
-                child: const Icon(Icons.group_add_outlined,
-                    color: AppColors.forest, size: 36),
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Enter invite code',
-              style: AppTextStyles.h2.copyWith(color: AppColors.forest),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Ask the Chama owner to share their invite code with you.',
-              style: AppTextStyles.bodyMedium
-                  .copyWith(color: AppColors.green, height: 1.5),
-            ),
-            const SizedBox(height: 32),
-
-            if (_errorMessage != null) ...[
-              _ErrorBanner(message: _errorMessage!),
-              const SizedBox(height: 16),
-            ],
-
-            TextField(
-              controller: _codeCtrl,
-              textCapitalization: TextCapitalization.characters,
-              style: AppTextStyles.h3.copyWith(
-                color: AppColors.forest,
-                letterSpacing: 4,
+              const SizedBox(height: 24),
+              Text(
+                'Enter invite code',
+                style: AppTextStyles.h2.copyWith(color: AppColors.forest),
               ),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                hintText: 'CHNG-XXXX',
-                hintStyle: AppTextStyles.h3.copyWith(
-                  color: AppColors.sand,
+              const SizedBox(height: 8),
+              Text(
+                'Ask the Chama owner to share their invite code with you.',
+                style: AppTextStyles.bodyMedium
+                    .copyWith(color: AppColors.green, height: 1.5),
+              ),
+              const SizedBox(height: 32),
+        
+              if (_errorMessage != null) ...[
+                _ErrorBanner(message: _errorMessage!),
+                const SizedBox(height: 16),
+              ],
+        
+              TextField(
+                controller: _codeCtrl,
+                textCapitalization: TextCapitalization.characters,
+                style: AppTextStyles.h3.copyWith(
+                  color: AppColors.forest,
                   letterSpacing: 4,
                 ),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: AppColors.sand),
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  hintText: 'CHNG-XXXX',
+                  hintStyle: AppTextStyles.h3.copyWith(
+                    color: AppColors.sand,
+                    letterSpacing: 4,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: AppColors.sand),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(color: AppColors.sand),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide:
+                        BorderSide(color: AppColors.forest, width: 2),
+                  ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: AppColors.sand),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide:
-                      BorderSide(color: AppColors.forest, width: 2),
-                ),
+                onSubmitted: (_) => _submit(),
               ),
-              onSubmitted: (_) => _submit(),
-            ),
-            const SizedBox(height: 24),
-
-            ElevatedButton(
-              onPressed: isLoading ? null : _submit,
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.5, color: AppColors.cream),
-                    )
-                  : const Text('Join Chama'),
-            ),
-          ],
+              const SizedBox(height: 24),
+        
+              ElevatedButton(
+                onPressed: isLoading ? null : _submit,
+                child: isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: AppColors.cream),
+                      )
+                    : const Text('Join Chama'),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
