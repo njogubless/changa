@@ -1,13 +1,11 @@
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/features/budget/data/models/budget_model.dart';
 import 'package:changa/features/budget/presentation/providers/budget_provider.dart';
+import 'package:changa/features/budget/presentation/widgets/budget_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-
-final _fmt = NumberFormat('#,##0', 'en_KE');
-String _kes(double v) => 'KES ${_fmt.format(v)}';
 
 class BudgetScreen extends ConsumerWidget {
   const BudgetScreen({super.key});
@@ -41,10 +39,8 @@ class BudgetScreen extends ConsumerWidget {
                     children: [
                       Text(
                         'My Budgets',
-                        style: AppTextStyles.h2.copyWith(
-                          color: AppColors.cream,
-                          height: 1.2,
-                        ),
+                        style: AppTextStyles.h2
+                            .copyWith(color: AppColors.cream, height: 1.2),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -58,7 +54,7 @@ class BudgetScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Summary cards (only when budgets exist) ─────────────
+            // ── Summary cards ───────────────────────────────────────
             if (state.budgets.isNotEmpty)
               SliverToBoxAdapter(
                 child: _SummaryRow(budgets: state.budgets),
@@ -96,7 +92,7 @@ class BudgetScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── List / states ───────────────────────────────────────
+            // ── Body states ─────────────────────────────────────────
             if (state.isLoading)
               const SliverFillRemaining(
                 child: Center(
@@ -106,13 +102,21 @@ class BudgetScreen extends ConsumerWidget {
               )
             else if (state.error != null)
               SliverFillRemaining(
-                child: _ErrorState(
+                child: BudgetErrorState(
+                  message: 'Could not load budgets',
                   onRetry: () =>
                       ref.read(budgetListProvider.notifier).refresh(),
                 ),
               )
             else if (state.budgets.isEmpty)
-              const SliverFillRemaining(child: _EmptyState())
+              const SliverFillRemaining(
+                child: BudgetEmptyState(
+                  title: 'No budgets yet',
+                  subtitle: 'Create a budget to start tracking\nyour spending.',
+                  icon: Icons.bar_chart_outlined,
+                  iconColor: AppColors.gold,
+                ),
+              )
             else
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -138,7 +142,7 @@ class BudgetScreen extends ConsumerWidget {
   }
 }
 
-// ── Summary row ────────────────────────────────────────────────────────────
+// ── Summary row ─────────────────────────────────────────────────────────────
 
 class _SummaryRow extends StatelessWidget {
   final List<BudgetModel> budgets;
@@ -148,34 +152,33 @@ class _SummaryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final totalIncome = budgets.fold(0.0, (s, b) => s + b.totalIncome);
     final totalSpent = budgets.fold(0.0, (s, b) => s + b.totalSpent);
-    final totalRemaining = totalIncome - totalSpent;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         children: [
           Expanded(
-            child: _SummaryCard(
+            child: BudgetStatCard(
               label: 'Total Income',
-              value: _kes(totalIncome),
+              value: kesFormat(totalIncome),
               icon: Icons.arrow_downward_rounded,
               iconColor: AppColors.sage,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: _SummaryCard(
+            child: BudgetStatCard(
               label: 'Total Spent',
-              value: _kes(totalSpent),
+              value: kesFormat(totalSpent),
               icon: Icons.arrow_upward_rounded,
               iconColor: AppColors.error,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: _SummaryCard(
+            child: BudgetStatCard(
               label: 'Remaining',
-              value: _kes(totalRemaining),
+              value: kesFormat(totalIncome - totalSpent),
               icon: Icons.account_balance_wallet_outlined,
               iconColor: AppColors.gold,
             ),
@@ -186,57 +189,7 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-class _SummaryCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color iconColor;
-  const _SummaryCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.forest.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: iconColor, size: 16),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.forest,
-                fontWeight: FontWeight.w700,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: AppTextStyles.caption.copyWith(color: AppColors.green),
-            ),
-          ],
-        ),
-      );
-}
-
-// ── Budget card ────────────────────────────────────────────────────────────
+// ── Budget card ──────────────────────────────────────────────────────────────
 
 class _BudgetCard extends StatelessWidget {
   final BudgetModel budget;
@@ -245,7 +198,6 @@ class _BudgetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = budget.overallProgress;
     final isOver = budget.totalSpent > budget.totalAllocated;
 
     return GestureDetector(
@@ -291,14 +243,27 @@ class _BudgetCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
+                      // Type + chama chips inline
                       Row(
                         children: [
-                          _TypeChip(label: budget.type.label),
+                          Text(
+                            budget.type.label,
+                            style: AppTextStyles.caption
+                                .copyWith(color: AppColors.green),
+                          ),
                           if (budget.isLinkedToChama) ...[
-                            const SizedBox(width: 6),
-                            _TypeChip(
-                              label: budget.linkedChamaName ?? 'Chama',
-                              icon: Icons.people_outline,
+                            Text(
+                              ' · ',
+                              style: AppTextStyles.caption
+                                  .copyWith(color: AppColors.sand),
+                            ),
+                            const Icon(Icons.people_outline,
+                                size: 10, color: AppColors.green),
+                            const SizedBox(width: 2),
+                            Text(
+                              budget.linkedChamaName ?? 'Chama',
+                              style: AppTextStyles.caption
+                                  .copyWith(color: AppColors.green),
                             ),
                           ],
                         ],
@@ -306,7 +271,6 @@ class _BudgetCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Delete
                 IconButton(
                   icon: const Icon(Icons.more_vert,
                       color: AppColors.sand, size: 18),
@@ -322,7 +286,7 @@ class _BudgetCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: progress,
+                value: budget.overallProgress,
                 minHeight: 6,
                 backgroundColor: AppColors.sand.withValues(alpha: 0.4),
                 valueColor: AlwaysStoppedAnimation(
@@ -332,26 +296,23 @@ class _BudgetCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            // Amount row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${_kes(budget.totalSpent)} spent',
+                  '${kesFormat(budget.totalSpent)} spent',
                   style: AppTextStyles.caption.copyWith(
                     color: isOver ? AppColors.error : AppColors.green,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
-                  'of ${_kes(budget.totalIncome)}',
-                  style:
-                      AppTextStyles.caption.copyWith(color: AppColors.green),
+                  'of ${kesFormat(budget.totalIncome)}',
+                  style: AppTextStyles.caption.copyWith(color: AppColors.green),
                 ),
               ],
             ),
 
-            // Event date if applicable
             if (budget.eventDate != null) ...[
               const SizedBox(height: 6),
               Row(
@@ -361,8 +322,7 @@ class _BudgetCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     DateFormat('d MMM yyyy').format(budget.eventDate!),
-                    style:
-                        AppTextStyles.caption.copyWith(color: AppColors.sand),
+                    style: AppTextStyles.caption.copyWith(color: AppColors.sand),
                   ),
                 ],
               ),
@@ -395,10 +355,12 @@ class _BudgetCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: AppColors.error),
+              leading:
+                  const Icon(Icons.delete_outline, color: AppColors.error),
               title: Text(
                 'Delete budget',
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
+                style:
+                    AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
               ),
               onTap: () {
                 Navigator.pop(ctx);
@@ -411,87 +373,4 @@ class _BudgetCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _TypeChip extends StatelessWidget {
-  final String label;
-  final IconData? icon;
-  const _TypeChip({required this.label, this.icon});
-
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 10, color: AppColors.green),
-            const SizedBox(width: 2),
-          ],
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(color: AppColors.green),
-          ),
-        ],
-      );
-}
-
-// ── Empty & Error states ───────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.gold.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.bar_chart_outlined,
-                    color: AppColors.gold, size: 36),
-              ),
-              const SizedBox(height: 20),
-              Text('No budgets yet',
-                  style: AppTextStyles.h3.copyWith(color: AppColors.forest)),
-              const SizedBox(height: 8),
-              Text(
-                'Create a budget to start tracking\nyour spending.',
-                style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.green, height: 1.6),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-class _ErrorState extends StatelessWidget {
-  final VoidCallback onRetry;
-  const _ErrorState({required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: AppColors.sand, size: 48),
-            const SizedBox(height: 16),
-            Text('Could not load budgets',
-                style: AppTextStyles.h4.copyWith(color: AppColors.forest)),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('Try again'),
-            ),
-          ],
-        ),
-      );
 }
