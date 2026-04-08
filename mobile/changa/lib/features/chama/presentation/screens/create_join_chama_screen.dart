@@ -1,13 +1,10 @@
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/features/chama/presentation/providers/chama_provider.dart';
+import 'package:changa/features/chama/presentation/screens/invite_code_sheet.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
-// ══════════════════════════════════════════════════════════════════════════════
-// CREATE CHAMA SCREEN
-// ══════════════════════════════════════════════════════════════════════════════
 
 class CreateChamaScreen extends ConsumerStatefulWidget {
   const CreateChamaScreen({super.key});
@@ -51,9 +48,17 @@ class _CreateChamaScreenState extends ConsumerState<CreateChamaScreen> {
 
     final state = ref.read(createChamaProvider);
     if (state.created != null) {
-      ref.read(chamaListProvider.notifier).addChama(state.created!);
+      final chama = state.created!;
+      ref.read(chamaListProvider.notifier).addChama(chama);
       ref.read(createChamaProvider.notifier).reset();
-      context.go('/chamas/${state.created!.id}');
+
+      // Navigate to chama detail first
+      context.go('/chamas/${chama.id}');
+
+      // Then show the invite code sheet so they can share immediately
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showInviteCodeSheet(context, chama);
+      });
     } else if (state.error != null) {
       setState(() => _errorMessage = state.error);
     }
@@ -124,8 +129,8 @@ class _CreateChamaScreenState extends ConsumerState<CreateChamaScreen> {
                 runSpacing: 10,
                 children: _colors.map((hex) {
                   final selected = hex == _selectedColor;
-                  final color = Color(
-                      int.parse(hex.replaceFirst('#', '0xFF')));
+                  final color =
+                      Color(int.parse(hex.replaceFirst('#', '0xFF')));
                   return GestureDetector(
                     onTap: () => setState(() => _selectedColor = hex),
                     child: AnimatedContainer(
@@ -179,6 +184,49 @@ class _CreateChamaScreenState extends ConsumerState<CreateChamaScreen> {
       ),
     );
   }
+}
+
+// ── Shared widgets ─────────────────────────────────────────────────────────
+class _Label extends StatelessWidget {
+  final String text;
+  const _Label(this.text);
+
+  @override
+  Widget build(BuildContext context) => Text(
+        text.toUpperCase(),
+        style: AppTextStyles.label.copyWith(
+          color: AppColors.forest,
+          letterSpacing: 0.8,
+        ),
+      );
+}
+
+class _ErrorBanner extends StatelessWidget {
+  final String message;
+  const _ErrorBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.error.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border:
+              Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline,
+                color: AppColors.error, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(message,
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: AppColors.error)),
+            ),
+          ],
+        ),
+      );
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -331,45 +379,3 @@ class _JoinChamaScreenState extends ConsumerState<JoinChamaScreen> {
   }
 }
 
-// ── Shared widgets ─────────────────────────────────────────────────────────
-class _Label extends StatelessWidget {
-  final String text;
-  const _Label(this.text);
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        style: AppTextStyles.label.copyWith(
-          color: AppColors.forest,
-          letterSpacing: 0.8,
-        ),
-      );
-}
-
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-  const _ErrorBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border:
-              Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.error_outline,
-                color: AppColors.error, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(message,
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.error)),
-            ),
-          ],
-        ),
-      );
-}
