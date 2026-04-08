@@ -1,15 +1,55 @@
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/features/budget/data/models/budget_model.dart';
 import 'package:changa/features/budget/presentation/providers/budget_provider.dart';
+import 'package:changa/features/budget/presentation/widgets/budget_widgets.dart';
 import 'package:changa/features/chama/data/models/chama_model.dart';
 import 'package:changa/features/chama/presentation/providers/chama_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 const _uuid = Uuid();
+
+// ── Draft model (replaces _LineItemDraft class) ────────────────────────────
+
+class LineItemDraft {
+  final BudgetCategory category;
+  final double? amount;
+  final String? customLabel;
+
+  const LineItemDraft({
+    required this.category,
+    this.amount,
+    this.customLabel,
+  });
+
+  LineItemDraft copyWith({
+    BudgetCategory? category,
+    double? amount,
+    String? customLabel,
+  }) =>
+      LineItemDraft(
+        category: category ?? this.category,
+        amount: amount ?? this.amount,
+        customLabel: customLabel ?? this.customLabel,
+      );
+
+  /// Converts to a proper model for saving. Throws if amount is null.
+  BudgetLineItem toLineItem() {
+    assert(amount != null, 'Amount must be set before converting');
+    return BudgetLineItem(
+      id: _uuid.v4(),
+      category: category,
+      customLabel: customLabel,
+      allocatedAmount: amount!,
+    );
+  }
+}
+
+// ── Screen ──────────────────────────────────────────────────────────────────
 
 class CreateBudgetScreen extends ConsumerStatefulWidget {
   const CreateBudgetScreen({super.key});
@@ -26,11 +66,7 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
   BudgetType _type = BudgetType.personal;
   DateTime? _eventDate;
   String? _errorMessage;
-
-  // Line items being built
-  final List<_LineItemDraft> _lineItems = [];
-
-  // Chama linking
+  final List<LineItemDraft> _lineItems = [];
   bool _linkToChama = false;
   ChamaModel? _selectedChama;
 
@@ -41,38 +77,52 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
     super.dispose();
   }
 
-  double get _totalAllocated =>
-      _lineItems.fold(0, (s, i) => s + (i.amount ?? 0));
+  // ── Computed values ────────────────────────────────────────────────────
+
   double get _totalIncome =>
       double.tryParse(_incomeCtrl.text.replaceAll(',', '')) ?? 0;
+
+  double get _totalAllocated =>
+      _lineItems.fold(0, (s, i) => s + (i.amount ?? 0));
+
   double get _unallocated => _totalIncome - _totalAllocated;
 
+  // ── Validation ─────────────────────────────────────────────────────────
+
+  String? _validate() {
+    if (!_formKey.currentState!.validate()) return '';
+    if (_lineItems.isEmpty) return 'Add at least one budget category.';
+    if (_lineItems.any((i) => i.amount == null || i.amount! <= 0)) {
+      return 'All categories need an amount greater than 0.';
+    }
+    if (_linkToChama && _selectedChama == null) {
+      return 'Select a Chama to link, or turn off the Chama toggle.';
+    }
+    return null;
+  }
+
+  // ── Submit ─────────────────────────────────────────────────────────────
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    if (_lineItems.isEmpty) {
-      setState(() => _errorMessage = 'Add at least one budget category.');
+    final error = _validate();
+    if (error != null) {
+      setState(() => _errorMessage = error.isEmpty ? null : error);
       return;
     }
     setState(() => _errorMessage = null);
-
-    final lineItems = _lineItems.map((d) => BudgetLineItem(
-          id: _uuid.v4(),
-          category: d.category,
-          customLabel: d.customLabel,
-          allocatedAmount: d.amount!,
-        )).toList();
 
     await ref.read(createBudgetProvider.notifier).create(
           title: _titleCtrl.text.trim(),
           type: _type,
           totalIncome: _totalIncome,
-          lineItems: lineItems,
+          lineItems: _lineItems.map((d) => d.toLineItem()).toList(),
           eventDate: _eventDate,
           linkedChamaId: _linkToChama ? _selectedChama?.id : null,
           linkedChamaName: _linkToChama ? _selectedChama?.name : null,
         );
 
     if (!mounted) return;
+
     final state = ref.read(createBudgetProvider);
     if (state.created != null) {
       ref.read(budgetListProvider.notifier).refresh();
@@ -82,6 +132,8 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
       setState(() => _errorMessage = 'Could not create budget. Try again.');
     }
   }
+
+  // ── Build ──────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -104,13 +156,14 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (_errorMessage != null) ...[
-                _ErrorBanner(message: _errorMessage!),
+              // Error banner
+              if (_errorMessage != null && _errorMessage!.isNotEmpty) ...[
+                BudgetErrorBanner(message: _errorMessage!),
                 const SizedBox(height: 16),
               ],
 
-              // ── Title ──────────────────────────────────────────────
-              _Label('Budget name'),
+              // ── Budget name ────────────────────────────────────────
+              const BudgetSectionLabel('Budget name'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _titleCtrl,
@@ -125,229 +178,46 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
               ),
               const SizedBox(height: 20),
 
-              // ── Type ───────────────────────────────────────────────
-              _Label('Budget type'),
+              // ── Budget type ────────────────────────────────────────
+              const BudgetSectionLabel('Budget type'),
               const SizedBox(height: 10),
-              Row(
-                children: BudgetType.values.map((t) {
-                  final selected = _type == t;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                          right: t != BudgetType.values.last ? 8 : 0),
-                      child: GestureDetector(
-                        onTap: () => setState(() {
-                          _type = t;
-                          if (t != BudgetType.chamaContribution) {
-                            _linkToChama = false;
-                          }
-                        }),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.forest.withValues(alpha: 0.08)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: selected
-                                  ? AppColors.forest
-                                  : AppColors.sand,
-                              width: selected ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(t.icon,
-                                  size: 20,
-                                  color: selected
-                                      ? AppColors.forest
-                                      : AppColors.sand),
-                              const SizedBox(height: 6),
-                              Text(
-                                t.label,
-                                style: AppTextStyles.caption.copyWith(
-                                  color: selected
-                                      ? AppColors.forest
-                                      : AppColors.green,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w400,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+              _TypeSelector(
+                selected: _type,
+                onChanged: (t) => setState(() {
+                  _type = t;
+                  // Reset line items when type changes — categories differ
+                  _lineItems.clear();
+                  if (t != BudgetType.chamaContribution) _linkToChama = false;
+                }),
               ),
               const SizedBox(height: 20),
 
-              // ── Event date (event type only) ───────────────────────
+              // ── Event date ─────────────────────────────────────────
               if (_type == BudgetType.event) ...[
-                _Label('Event date (optional)'),
+                const BudgetSectionLabel('Event date (optional)'),
                 const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate:
-                          DateTime.now().add(const Duration(days: 30)),
-                      firstDate: DateTime.now(),
-                      lastDate:
-                          DateTime.now().add(const Duration(days: 365 * 3)),
-                      builder: (context, child) => Theme(
-                        data: Theme.of(context).copyWith(
-                          colorScheme: const ColorScheme.light(
-                            primary: AppColors.forest,
-                            onPrimary: AppColors.cream,
-                          ),
-                        ),
-                        child: child!,
-                      ),
-                    );
-                    if (picked != null) setState(() => _eventDate = picked);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.sand),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.calendar_today_outlined,
-                            size: 18,
-                            color: _eventDate != null
-                                ? AppColors.forest
-                                : AppColors.sand),
-                        const SizedBox(width: 10),
-                        Text(
-                          _eventDate != null
-                              ? '${_eventDate!.day} ${_monthName(_eventDate!.month)} ${_eventDate!.year}'
-                              : 'No date set',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: _eventDate != null
-                                ? AppColors.forest
-                                : Colors.grey.shade400,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (_eventDate != null)
-                          GestureDetector(
-                            onTap: () => setState(() => _eventDate = null),
-                            child: const Icon(Icons.close,
-                                size: 16, color: AppColors.sand),
-                          ),
-                      ],
-                    ),
-                  ),
+                _DatePicker(
+                  date: _eventDate,
+                  onPicked: (d) => setState(() => _eventDate = d),
+                  onCleared: () => setState(() => _eventDate = null),
                 ),
                 const SizedBox(height: 20),
               ],
 
               // ── Link to Chama ──────────────────────────────────────
               if (chamaState.chamas.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.sand),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Link to a Chama',
-                                  style: AppTextStyles.bodyMedium.copyWith(
-                                    color: AppColors.forest,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                Text(
-                                  'Track contributions for a specific Chama',
-                                  style: AppTextStyles.caption
-                                      .copyWith(color: AppColors.green),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Switch(
-                            value: _linkToChama,
-                            onChanged: (v) =>
-                                setState(() => _linkToChama = v),
-                            activeThumbColor: AppColors.forest,
-                          ),
-                        ],
-                      ),
-                      if (_linkToChama) ...[
-                        const SizedBox(height: 12),
-                        ...chamaState.chamas.map((chama) {
-                          final selected = _selectedChama?.id == chama.id;
-                          return GestureDetector(
-                            onTap: () =>
-                                setState(() => _selectedChama = chama),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? AppColors.forest.withValues(alpha: 0.08)
-                                    : AppColors.cream,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: selected
-                                      ? AppColors.forest
-                                      : AppColors.sand,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.people_outline,
-                                      size: 16, color: AppColors.forest),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    chama.name,
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: AppColors.forest,
-                                      fontWeight: selected
-                                          ? FontWeight.w700
-                                          : FontWeight.w400,
-                                    ),
-                                  ),
-                                  if (selected) ...[
-                                    const Spacer(),
-                                    const Icon(Icons.check_circle,
-                                        size: 16, color: AppColors.forest),
-                                  ],
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ],
-                  ),
+                _ChamaLinker(
+                  chamas: chamaState.chamas,
+                  isLinked: _linkToChama,
+                  selected: _selectedChama,
+                  onToggle: (v) => setState(() => _linkToChama = v),
+                  onSelect: (c) => setState(() => _selectedChama = c),
                 ),
                 const SizedBox(height: 20),
               ],
 
               // ── Total income ───────────────────────────────────────
-              _Label('Total income / budget (KES)'),
+              const BudgetSectionLabel('Total income / budget (KES)'),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _incomeCtrl,
@@ -360,7 +230,8 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
                 ),
                 onChanged: (_) => setState(() {}),
                 validator: (v) {
-                  final amount = double.tryParse(v?.replaceAll(',', '') ?? '');
+                  final amount =
+                      double.tryParse(v?.replaceAll(',', '') ?? '');
                   if (amount == null || amount < 1) {
                     return 'Enter a valid amount';
                   }
@@ -369,12 +240,10 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ── Line items ─────────────────────────────────────────
+              // ── Categories ─────────────────────────────────────────
               Row(
                 children: [
-                  Expanded(
-                    child: _Label('Budget categories'),
-                  ),
+                  const Expanded(child: BudgetSectionLabel('Budget categories')),
                   TextButton.icon(
                     onPressed: _addLineItem,
                     icon: const Icon(Icons.add, size: 16),
@@ -385,7 +254,6 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
                 ],
               ),
 
-              // Unallocated indicator
               if (_incomeCtrl.text.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 _AllocationBar(
@@ -397,37 +265,17 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
               const SizedBox(height: 12),
 
               if (_lineItems.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.sand),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline,
-                          color: AppColors.sand, size: 18),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Tap "Add" to add expense categories',
-                        style: AppTextStyles.bodySmall
-                            .copyWith(color: AppColors.green),
-                      ),
-                    ],
-                  ),
-                )
+                _EmptyCategories()
               else
                 ..._lineItems.asMap().entries.map((e) {
                   final idx = e.key;
-                  final item = e.value;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _LineItemRow(
-                      item: item,
+                      item: _lineItems[idx],
                       budgetType: _type,
-                      onChanged: (updated) => setState(
-                          () => _lineItems[idx] = updated),
+                      onChanged: (updated) =>
+                          setState(() => _lineItems[idx] = updated),
                       onRemove: () =>
                           setState(() => _lineItems.removeAt(idx)),
                     ),
@@ -457,227 +305,247 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
 
   void _addLineItem() {
     setState(() {
-      _lineItems.add(_LineItemDraft(
-        category: _defaultCategories(_type).first,
+      _lineItems.add(LineItemDraft(
+        category: categoriesFor(_type).first,
       ));
     });
   }
-
-  List<BudgetCategory> _defaultCategories(BudgetType type) {
-    switch (type) {
-      case BudgetType.personal:
-        return [
-          BudgetCategory.food,
-          BudgetCategory.transport,
-          BudgetCategory.rent,
-          BudgetCategory.utilities,
-          BudgetCategory.healthcare,
-          BudgetCategory.education,
-          BudgetCategory.entertainment,
-          BudgetCategory.clothing,
-          BudgetCategory.savings,
-          BudgetCategory.other,
-        ];
-      case BudgetType.event:
-        return [
-          BudgetCategory.venue,
-          BudgetCategory.catering,
-          BudgetCategory.decoration,
-          BudgetCategory.photography,
-          BudgetCategory.music,
-          BudgetCategory.transport_event,
-          BudgetCategory.gifts,
-          BudgetCategory.other,
-        ];
-      case BudgetType.chamaContribution:
-        return [
-          BudgetCategory.contribution,
-          BudgetCategory.other,
-        ];
-    }
-  }
-
-  String _monthName(int month) {
-    const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    return months[month - 1];
-  }
 }
 
-// ── Line item draft ────────────────────────────────────────────────────────
+// ── Type selector ────────────────────────────────────────────────────────────
 
-class _LineItemDraft {
-  BudgetCategory category;
-  double? amount;
-  String? customLabel;
+class _TypeSelector extends StatelessWidget {
+  final BudgetType selected;
+  final ValueChanged<BudgetType> onChanged;
+  const _TypeSelector({required this.selected, required this.onChanged});
 
-  _LineItemDraft({required this.category, this.amount, this.customLabel});
-
-  _LineItemDraft copyWith({
-    BudgetCategory? category,
-    double? amount,
-    String? customLabel,
-  }) =>
-      _LineItemDraft(
-        category: category ?? this.category,
-        amount: amount ?? this.amount,
-        customLabel: customLabel ?? this.customLabel,
+  @override
+  Widget build(BuildContext context) => Row(
+        children: BudgetType.values.map((t) {
+          final isSelected = selected == t;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                  right: t != BudgetType.values.last ? 8 : 0),
+              child: GestureDetector(
+                onTap: () => onChanged(t),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.forest.withValues(alpha: 0.08)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isSelected ? AppColors.forest : AppColors.sand,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(t.icon,
+                          size: 20,
+                          color:
+                              isSelected ? AppColors.forest : AppColors.sand),
+                      const SizedBox(height: 6),
+                      Text(
+                        t.label,
+                        style: AppTextStyles.caption.copyWith(
+                          color: isSelected
+                              ? AppColors.forest
+                              : AppColors.green,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w400,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       );
 }
 
-// ── Line item row ──────────────────────────────────────────────────────────
+// ── Date picker row ──────────────────────────────────────────────────────────
 
-class _LineItemRow extends StatefulWidget {
-  final _LineItemDraft item;
-  final BudgetType budgetType;
-  final ValueChanged<_LineItemDraft> onChanged;
-  final VoidCallback onRemove;
-
-  const _LineItemRow({
-    required this.item,
-    required this.budgetType,
-    required this.onChanged,
-    required this.onRemove,
+class _DatePicker extends StatelessWidget {
+  final DateTime? date;
+  final ValueChanged<DateTime> onPicked;
+  final VoidCallback onCleared;
+  const _DatePicker({
+    required this.date,
+    required this.onPicked,
+    required this.onCleared,
   });
 
   @override
-  State<_LineItemRow> createState() => _LineItemRowState();
+  Widget build(BuildContext context) => GestureDetector(
+        onTap: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: DateTime.now().add(const Duration(days: 30)),
+            firstDate: DateTime.now(),
+            lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+            builder: (context, child) => Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: const ColorScheme.light(
+                  primary: AppColors.forest,
+                  onPrimary: AppColors.cream,
+                ),
+              ),
+              child: child!,
+            ),
+          );
+          if (picked != null) onPicked(picked);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.sand),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.calendar_today_outlined,
+                  size: 18,
+                  color: date != null ? AppColors.forest : AppColors.sand),
+              const SizedBox(width: 10),
+              Text(
+                date != null
+                    ? DateFormat('d MMM yyyy').format(date!)
+                    : 'No date set',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: date != null
+                      ? AppColors.forest
+                      : Colors.grey.shade400,
+                ),
+              ),
+              const Spacer(),
+              if (date != null)
+                GestureDetector(
+                  onTap: onCleared,
+                  child: const Icon(Icons.close,
+                      size: 16, color: AppColors.sand),
+                ),
+            ],
+          ),
+        ),
+      );
 }
 
-class _LineItemRowState extends State<_LineItemRow> {
-  late final TextEditingController _amountCtrl;
+// ── Chama linker ─────────────────────────────────────────────────────────────
 
-  @override
-  void initState() {
-    super.initState();
-    _amountCtrl = TextEditingController(
-      text: widget.item.amount?.toStringAsFixed(0) ?? '',
-    );
-  }
+class _ChamaLinker extends StatelessWidget {
+  final List<ChamaModel> chamas;
+  final bool isLinked;
+  final ChamaModel? selected;
+  final ValueChanged<bool> onToggle;
+  final ValueChanged<ChamaModel> onSelect;
 
-  @override
-  void dispose() {
-    _amountCtrl.dispose();
-    super.dispose();
-  }
-
-  List<BudgetCategory> get _categories {
-    switch (widget.budgetType) {
-      case BudgetType.personal:
-        return [
-          BudgetCategory.food, BudgetCategory.transport, BudgetCategory.rent,
-          BudgetCategory.utilities, BudgetCategory.healthcare,
-          BudgetCategory.education, BudgetCategory.entertainment,
-          BudgetCategory.clothing, BudgetCategory.savings, BudgetCategory.other,
-        ];
-      case BudgetType.event:
-        return [
-          BudgetCategory.venue, BudgetCategory.catering,
-          BudgetCategory.decoration, BudgetCategory.photography,
-          BudgetCategory.music, BudgetCategory.transport_event,
-          BudgetCategory.gifts, BudgetCategory.other,
-        ];
-      case BudgetType.chamaContribution:
-        return [BudgetCategory.contribution, BudgetCategory.other];
-    }
-  }
+  const _ChamaLinker({
+    required this.chamas,
+    required this.isLinked,
+    required this.selected,
+    required this.onToggle,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.sand),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Category icon
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.forest.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(widget.item.category.icon,
-                  size: 18, color: AppColors.forest),
-            ),
-            const SizedBox(width: 10),
-            // Category dropdown
-            Expanded(
-              flex: 3,
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<BudgetCategory>(
-                  value: widget.item.category,
-                  isDense: true,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.forest,
-                  ),
-                  items: _categories
-                      .map((c) => DropdownMenuItem(
-                            value: c,
-                            child: Text(c.label),
-                          ))
-                      .toList(),
-                  onChanged: (c) {
-                    if (c != null) {
-                      widget.onChanged(widget.item.copyWith(category: c));
-                    }
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Amount input
-            Expanded(
-              flex: 2,
-              child: TextFormField(
-                controller: _amountCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: AppColors.forest),
-                decoration: InputDecoration(
-                  hintText: 'Amount',
-                  hintStyle: AppTextStyles.caption
-                      .copyWith(color: Colors.grey.shade400),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 10),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.sand),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.sand),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.forest),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Link to a Chama',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.forest,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        'Track contributions for a specific Chama',
+                        style: AppTextStyles.caption
+                            .copyWith(color: AppColors.green),
+                      ),
+                    ],
                   ),
                 ),
-                onChanged: (v) {
-                  final amount = double.tryParse(v);
-                  widget.onChanged(widget.item.copyWith(amount: amount));
-                },
-              ),
+                Switch(
+                  value: isLinked,
+                  onChanged: onToggle,
+                  activeThumbColor: AppColors.forest,
+                ),
+              ],
             ),
-            const SizedBox(width: 6),
-            // Remove
-            GestureDetector(
-              onTap: widget.onRemove,
-              child: const Icon(Icons.remove_circle_outline,
-                  color: AppColors.error, size: 20),
-            ),
+            if (isLinked) ...[
+              const SizedBox(height: 12),
+              ...chamas.map((chama) {
+                final isSelected = selected?.id == chama.id;
+                return GestureDetector(
+                  onTap: () => onSelect(chama),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.forest.withValues(alpha: 0.08)
+                          : AppColors.cream,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color:
+                            isSelected ? AppColors.forest : AppColors.sand,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.people_outline,
+                            size: 16, color: AppColors.forest),
+                        const SizedBox(width: 8),
+                        Text(
+                          chama.name,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.forest,
+                            fontWeight: isSelected
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                          ),
+                        ),
+                        if (isSelected) ...[
+                          const Spacer(),
+                          const Icon(Icons.check_circle,
+                              size: 16, color: AppColors.forest),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
           ],
         ),
       );
 }
 
-// ── Allocation bar ─────────────────────────────────────────────────────────
+// ── Allocation bar ────────────────────────────────────────────────────────────
 
 class _AllocationBar extends StatelessWidget {
   final double allocated;
@@ -691,7 +559,8 @@ class _AllocationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = total > 0 ? (allocated / total).clamp(0.0, 1.0) : 0.0;
+    final progress =
+        total > 0 ? (allocated / total).clamp(0.0, 1.0) : 0.0;
     final isOver = allocated > total;
 
     return Column(
@@ -722,44 +591,162 @@ class _AllocationBar extends StatelessWidget {
   }
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Empty categories hint ─────────────────────────────────────────────────────
 
-class _Label extends StatelessWidget {
-  final String text;
-  const _Label(this.text);
-
-  @override
-  Widget build(BuildContext context) => Text(
-        text.toUpperCase(),
-        style: AppTextStyles.label.copyWith(
-          color: AppColors.forest,
-          letterSpacing: 0.8,
-        ),
-      );
-}
-
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-  const _ErrorBanner({required this.message});
-
+class _EmptyCategories extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.error.withValues(alpha: 0.08),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+          border: Border.all(color: AppColors.sand),
         ),
         child: Row(
           children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(message,
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.error)),
+            const Icon(Icons.info_outline, color: AppColors.sand, size: 18),
+            const SizedBox(width: 10),
+            Text(
+              'Tap "Add" to add expense categories',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.green),
             ),
           ],
         ),
       );
+}
+
+// ── Line item row ─────────────────────────────────────────────────────────────
+
+class _LineItemRow extends StatefulWidget {
+  final LineItemDraft item;
+  final BudgetType budgetType;
+  final ValueChanged<LineItemDraft> onChanged;
+  final VoidCallback onRemove;
+
+  const _LineItemRow({
+    required this.item,
+    required this.budgetType,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  @override
+  State<_LineItemRow> createState() => _LineItemRowState();
+}
+
+class _LineItemRowState extends State<_LineItemRow> {
+  late final TextEditingController _amountCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountCtrl = TextEditingController(
+      text: widget.item.amount?.toStringAsFixed(0) ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Uses shared categoriesFor() — no duplication
+    final categories = categoriesFor(widget.budgetType);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.sand),
+      ),
+      child: Row(
+        children: [
+          // Category icon
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.forest.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(widget.item.category.icon,
+                size: 18, color: AppColors.forest),
+          ),
+          const SizedBox(width: 10),
+
+          // Category dropdown
+          Expanded(
+            flex: 3,
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<BudgetCategory>(
+                value: widget.item.category,
+                isDense: true,
+                style:
+                    AppTextStyles.bodySmall.copyWith(color: AppColors.forest),
+                items: categories
+                    .map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Text(c.label),
+                        ))
+                    .toList(),
+                onChanged: (c) {
+                  if (c != null) {
+                    widget.onChanged(widget.item.copyWith(category: c));
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Amount input
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: _amountCtrl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style:
+                  AppTextStyles.bodySmall.copyWith(color: AppColors.forest),
+              decoration: InputDecoration(
+                hintText: 'Amount',
+                hintStyle: AppTextStyles.caption
+                    .copyWith(color: Colors.grey.shade400),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.sand),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.sand),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.forest),
+                ),
+              ),
+              onChanged: (v) {
+                widget.onChanged(
+                    widget.item.copyWith(amount: double.tryParse(v)));
+              },
+            ),
+          ),
+          const SizedBox(width: 6),
+
+          // Remove
+          GestureDetector(
+            onTap: widget.onRemove,
+            child: const Icon(Icons.remove_circle_outline,
+                color: AppColors.error, size: 20),
+          ),
+        ],
+      ),
+    );
+  }
 }
