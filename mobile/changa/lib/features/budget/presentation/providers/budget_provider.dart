@@ -1,12 +1,14 @@
+import 'package:changa/core/network/api_client.dart';
 import 'package:changa/features/budget/data/models/budget_model.dart';
 import 'package:changa/features/budget/data/repositories/budget_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 
 // ── Repository provider ────────────────────────────────────────────────────
 
 final budgetRepositoryProvider = Provider<BudgetRepository>(
-  (_) => LocalBudgetRepository(),
+  (_) => ApiBudgetRepository(ApiClient(FlutterSecureStorage())),
 );
 
 // ── Budget list state ──────────────────────────────────────────────────────
