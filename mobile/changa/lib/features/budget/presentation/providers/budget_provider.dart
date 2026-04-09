@@ -1,14 +1,10 @@
-import 'package:changa/core/network/api_client.dart';
+import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/budget/data/models/budget_model.dart';
 import 'package:changa/features/budget/data/repositories/budget_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-
-// ── Repository provider ────────────────────────────────────────────────────
 
 final budgetRepositoryProvider = Provider<BudgetRepository>(
-  (_) => ApiBudgetRepository(ApiClient(FlutterSecureStorage())),
+  (ref) => ApiBudgetRepository(ref.watch(apiClientProvider)),
 );
 
 // ── Budget list state ──────────────────────────────────────────────────────
@@ -28,12 +24,11 @@ class BudgetListState {
     List<BudgetModel>? budgets,
     bool? isLoading,
     String? error,
-  }) =>
-      BudgetListState(
-        budgets: budgets ?? this.budgets,
-        isLoading: isLoading ?? this.isLoading,
-        error: error,
-      );
+  }) => BudgetListState(
+    budgets: budgets ?? this.budgets,
+    isLoading: isLoading ?? this.isLoading,
+    error: error,
+  );
 }
 
 class BudgetListNotifier extends StateNotifier<BudgetListState> {
@@ -63,8 +58,8 @@ class BudgetListNotifier extends StateNotifier<BudgetListState> {
 
 final budgetListProvider =
     StateNotifierProvider<BudgetListNotifier, BudgetListState>(
-  (ref) => BudgetListNotifier(ref.watch(budgetRepositoryProvider)),
-);
+      (ref) => BudgetListNotifier(ref.watch(budgetRepositoryProvider)),
+    );
 
 // ── Single budget state ────────────────────────────────────────────────────
 
@@ -73,22 +68,17 @@ class BudgetDetailState {
   final bool isLoading;
   final String? error;
 
-  const BudgetDetailState({
-    this.budget,
-    this.isLoading = false,
-    this.error,
-  });
+  const BudgetDetailState({this.budget, this.isLoading = false, this.error});
 
   BudgetDetailState copyWith({
     BudgetModel? budget,
     bool? isLoading,
     String? error,
-  }) =>
-      BudgetDetailState(
-        budget: budget ?? this.budget,
-        isLoading: isLoading ?? this.isLoading,
-        error: error,
-      );
+  }) => BudgetDetailState(
+    budget: budget ?? this.budget,
+    isLoading: isLoading ?? this.isLoading,
+    error: error,
+  );
 }
 
 class BudgetDetailNotifier extends StateNotifier<BudgetDetailState> {
@@ -96,7 +86,7 @@ class BudgetDetailNotifier extends StateNotifier<BudgetDetailState> {
   final String budgetId;
 
   BudgetDetailNotifier(this._repo, this.budgetId)
-      : super(const BudgetDetailState()) {
+    : super(const BudgetDetailState()) {
     load();
   }
 
@@ -145,10 +135,11 @@ class BudgetDetailNotifier extends StateNotifier<BudgetDetailState> {
   }
 }
 
-final budgetDetailProvider = StateNotifierProvider.family<BudgetDetailNotifier,
-    BudgetDetailState, String>(
-  (ref, id) => BudgetDetailNotifier(ref.watch(budgetRepositoryProvider), id),
-);
+final budgetDetailProvider = StateNotifierProvider.family<
+  BudgetDetailNotifier,
+  BudgetDetailState,
+  String
+>((ref, id) => BudgetDetailNotifier(ref.watch(budgetRepositoryProvider), id));
 
 // ── Create budget state ────────────────────────────────────────────────────
 
@@ -157,22 +148,17 @@ class CreateBudgetState {
   final BudgetModel? created;
   final String? error;
 
-  const CreateBudgetState({
-    this.isLoading = false,
-    this.created,
-    this.error,
-  });
+  const CreateBudgetState({this.isLoading = false, this.created, this.error});
 
   CreateBudgetState copyWith({
     bool? isLoading,
     BudgetModel? created,
     String? error,
-  }) =>
-      CreateBudgetState(
-        isLoading: isLoading ?? this.isLoading,
-        created: created ?? this.created,
-        error: error,
-      );
+  }) => CreateBudgetState(
+    isLoading: isLoading ?? this.isLoading,
+    created: created ?? this.created,
+    error: error,
+  );
 }
 
 class CreateBudgetNotifier extends StateNotifier<CreateBudgetState> {
@@ -215,5 +201,5 @@ class CreateBudgetNotifier extends StateNotifier<CreateBudgetState> {
 
 final createBudgetProvider =
     StateNotifierProvider<CreateBudgetNotifier, CreateBudgetState>(
-  (ref) => CreateBudgetNotifier(ref.read(budgetRepositoryProvider)),
-);
+      (ref) => CreateBudgetNotifier(ref.watch(budgetRepositoryProvider)),
+    );
