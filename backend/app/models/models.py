@@ -3,7 +3,8 @@ import secrets
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Boolean, DateTime,
-    Float, Text, ForeignKey, Enum as SAEnum
+    Float, Text, ForeignKey, Integer,
+    Enum as SAEnum
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -17,7 +18,6 @@ def utcnow():
 
 
 def generate_invite_code() -> str:
-    """Generate a unique 8-char invite code e.g. CHNG-4X9K"""
     return f"CHNG-{secrets.token_hex(2).upper()}"
 
 
@@ -54,7 +54,37 @@ class PaymentProvider(str, enum.Enum):
     AIRTEL = "airtel"
 
 
-# ── Models ─────────────────────────────────────────────────────────────────────
+class BudgetType(str, enum.Enum):
+    PERSONAL = "personal"
+    EVENT = "event"
+    CHAMA = "chama"
+
+
+class BudgetCategoryType(str, enum.Enum):
+    # Personal
+    FOOD = "food"
+    TRANSPORT = "transport"
+    RENT = "rent"
+    UTILITIES = "utilities"
+    HEALTHCARE = "healthcare"
+    EDUCATION = "education"
+    ENTERTAINMENT = "entertainment"
+    CLOTHING = "clothing"
+    SAVINGS = "savings"
+    # Event
+    VENUE = "venue"
+    CATERING = "catering"
+    DECORATION = "decoration"
+    PHOTOGRAPHY = "photography"
+    MUSIC = "music"
+    GIFTS = "gifts"
+    # Chama
+    CONTRIBUTION = "contribution"
+    # Other
+    OTHER = "other"
+
+
+# ── User & Auth Models ─────────────────────────────────────────────────────────
 
 class User(Base):
     __tablename__ = "users"
@@ -71,12 +101,28 @@ class User(Base):
     updated_at      = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # Relationships
-    owned_chamas    = relationship("Chama", back_populates="owner", foreign_keys="Chama.owner_id")
+    owned_chamas      = relationship("Chama", back_populates="owner", foreign_keys="Chama.owner_id")
     chama_memberships = relationship("ChamaMember", back_populates="user", foreign_keys="ChamaMember.user_id")
-    owned_projects  = relationship("Project", back_populates="owner", foreign_keys="Project.owner_id")
-    contributions   = relationship("Contribution", back_populates="user")
-    refresh_tokens  = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    owned_projects    = relationship("Project", back_populates="owner", foreign_keys="Project.owner_id")
+    contributions     = relationship("Contribution", back_populates="user")
+    refresh_tokens    = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    budgets           = relationship("Budget", back_populates="user", cascade="all, delete-orphan")
 
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    token      = Column(String(500), unique=True, nullable=False)
+    is_revoked = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=utcnow)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+
+    user = relationship("User", back_populates="refresh_tokens")
+
+
+# ── Chama Models ───────────────────────────────────────────────────────────────
 
 class Chama(Base):
     __tablename__ = "chamas"
@@ -85,13 +131,12 @@ class Chama(Base):
     owner_id     = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     name         = Column(String(255), nullable=False)
     description  = Column(Text, nullable=True)
-    avatar_color = Column(String(7), default="#1B4332")   # hex — shown as chama icon bg
+    avatar_color = Column(String(7), default="#1B4332")
     invite_code  = Column(String(10), unique=True, nullable=False, default=generate_invite_code)
     is_active    = Column(Boolean, default=True)
     created_at   = Column(DateTime(timezone=True), default=utcnow)
     updated_at   = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
-    # Relationships
     owner    = relationship("User", back_populates="owned_chamas", foreign_keys=[owner_id])
     members  = relationship("ChamaMember", back_populates="chama", cascade="all, delete-orphan")
     projects = relationship("Project", back_populates="chama", cascade="all, delete-orphan")
@@ -115,42 +160,38 @@ class ChamaMember(Base):
     invited_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     joined_at  = Column(DateTime(timezone=True), default=utcnow)
 
-    # Relationships
     chama = relationship("Chama", back_populates="members")
     user  = relationship("User", back_populates="chama_memberships", foreign_keys=[user_id])
 
 
+# ── Project Models ─────────────────────────────────────────────────────────────
+
 class Project(Base):
     __tablename__ = "projects"
 
-    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    chama_id       = Column(UUID(as_uuid=True), ForeignKey("chamas.id"), nullable=False, index=True)
-    owner_id       = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    title          = Column(String(255), nullable=False)
-    description    = Column(Text, nullable=True)
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    chama_id        = Column(UUID(as_uuid=True), ForeignKey("chamas.id"), nullable=False, index=True)
+    owner_id        = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    title           = Column(String(255), nullable=False)
+    description     = Column(Text, nullable=True)
     cover_image_url = Column(String(500), nullable=True)
-    target_amount  = Column(Float, nullable=False)
-    raised_amount  = Column(Float, default=0.0)
-    currency       = Column(String(3), default="KES")
-    status         = Column(SAEnum(ProjectStatus), default=ProjectStatus.ACTIVE)
-    is_anonymous   = Column(Boolean, default=False)
-    deadline       = Column(DateTime(timezone=True), nullable=True)
+    target_amount   = Column(Float, nullable=False)
+    raised_amount   = Column(Float, default=0.0)
+    currency        = Column(String(3), default="KES")
+    status          = Column(SAEnum(ProjectStatus), default=ProjectStatus.ACTIVE)
+    is_anonymous    = Column(Boolean, default=False)
+    deadline        = Column(DateTime(timezone=True), nullable=True)
+    payment_type    = Column(SAEnum(PaymentAccountType), nullable=False)
+    payment_number  = Column(String(20), nullable=False)
+    payment_name    = Column(String(255), nullable=True)
+    account_reference = Column(String(100), nullable=True)
+    created_at      = Column(DateTime(timezone=True), default=utcnow)
+    updated_at      = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
-    # Payment account — the number contributors send money to
-    payment_type      = Column(SAEnum(PaymentAccountType), nullable=False)
-    payment_number    = Column(String(20), nullable=False)   # till/paybill/phone number
-    payment_name      = Column(String(255), nullable=True)   # verified account name from Daraja
-    account_reference = Column(String(100), nullable=True)   # for paybill account number
-
-    created_at = Column(DateTime(timezone=True), default=utcnow)
-    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
-
-    # Relationships
     chama         = relationship("Chama", back_populates="projects")
     owner         = relationship("User", back_populates="owned_projects", foreign_keys=[owner_id])
     contributions = relationship("Contribution", back_populates="project")
 
-    # Computed properties
     @property
     def percentage_funded(self) -> float:
         if self.target_amount == 0:
@@ -190,20 +231,108 @@ class Contribution(Base):
     initiated_at       = Column(DateTime(timezone=True), default=utcnow)
     completed_at       = Column(DateTime(timezone=True), nullable=True)
 
-    # Relationships
     project = relationship("Project", back_populates="contributions")
     user    = relationship("User", back_populates="contributions")
 
 
-class RefreshToken(Base):
-    __tablename__ = "refresh_tokens"
+# ── Budget Models ──────────────────────────────────────────────────────────────
 
-    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    token      = Column(String(500), unique=True, nullable=False)
-    is_revoked = Column(Boolean, default=False)
+class Budget(Base):
+    """Top-level budget — personal, event, or chama-linked."""
+    __tablename__ = "budgets"
+
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id         = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    title           = Column(String(255), nullable=False)
+    type            = Column(SAEnum(BudgetType), nullable=False, default=BudgetType.PERSONAL)
+    total_income    = Column(Float, nullable=False, default=0.0)
+    currency        = Column(String(3), default="KES")
+    event_date      = Column(DateTime(timezone=True), nullable=True)
+
+    # Optional link to a Chama (for chama-type budgets)
+    linked_chama_id   = Column(UUID(as_uuid=True), ForeignKey("chamas.id"), nullable=True, index=True)
+    linked_chama_name = Column(String(255), nullable=True)  # cached name
+
+    # Optional link to a specific project
+    linked_project_id   = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True)
+    linked_project_name = Column(String(255), nullable=True)  # cached name
+
     created_at = Column(DateTime(timezone=True), default=utcnow)
-    expires_at = Column(DateTime(timezone=True), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     # Relationships
-    user = relationship("User", back_populates="refresh_tokens")
+    user       = relationship("User", back_populates="budgets")
+    categories = relationship("BudgetCategory", back_populates="budget",
+                              cascade="all, delete-orphan",
+                              order_by="BudgetCategory.sort_order")
+
+    @property
+    def total_allocated(self) -> float:
+        return sum(c.allocated_amount for c in self.categories)
+
+    @property
+    def total_spent(self) -> float:
+        return sum(c.spent_amount for c in self.categories)
+
+    @property
+    def unallocated(self) -> float:
+        return self.total_income - self.total_allocated
+
+    @property
+    def overall_progress(self) -> float:
+        if self.total_allocated == 0:
+            return 0.0
+        return round((self.total_spent / self.total_allocated), 4)
+
+
+class BudgetCategory(Base):
+    """A spending category within a budget (e.g. Food, Venue, Transport)."""
+    __tablename__ = "budget_categories"
+
+    id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    budget_id        = Column(UUID(as_uuid=True), ForeignKey("budgets.id"), nullable=False, index=True)
+    category         = Column(SAEnum(BudgetCategoryType), nullable=False, default=BudgetCategoryType.OTHER)
+    custom_label     = Column(String(255), nullable=True)   # override the default category name
+    allocated_amount = Column(Float, nullable=False, default=0.0)
+    spent_amount     = Column(Float, nullable=False, default=0.0)   # updated by expenses
+    sort_order       = Column(Integer, nullable=False, default=0)
+    created_at       = Column(DateTime(timezone=True), default=utcnow)
+
+    # Relationships
+    budget   = relationship("Budget", back_populates="categories")
+    expenses = relationship("BudgetExpense", back_populates="category",
+                            cascade="all, delete-orphan",
+                            order_by="BudgetExpense.date.desc()")
+
+    @property
+    def label(self) -> str:
+        return self.custom_label or self.category.value.replace("_", " ").title()
+
+    @property
+    def remaining(self) -> float:
+        return self.allocated_amount - self.spent_amount
+
+    @property
+    def progress(self) -> float:
+        if self.allocated_amount == 0:
+            return 0.0
+        return round((self.spent_amount / self.allocated_amount), 4)
+
+    @property
+    def is_over_budget(self) -> bool:
+        return self.spent_amount > self.allocated_amount
+
+
+class BudgetExpense(Base):
+    """An actual expense recorded under a budget category."""
+    __tablename__ = "budget_expenses"
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("budget_categories.id"), nullable=False, index=True)
+    description = Column(String(500), nullable=False)
+    amount      = Column(Float, nullable=False)
+    date        = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    created_at  = Column(DateTime(timezone=True), default=utcnow)
+
+    # Relationships
+    category = relationship("BudgetCategory", back_populates="expenses")
