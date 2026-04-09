@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.core.config import settings
 from app.database import create_tables
-from app.routers import auth, projects, payments, chamas  # ← add chamas
+from app.routers import auth, projects, payments, chamas, budgets
 
 
 @asynccontextmanager
@@ -33,9 +33,10 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(chamas.router)   # ← chamas before projects
+app.include_router(chamas.router)
 app.include_router(projects.router)
 app.include_router(payments.router)
+app.include_router(budgets.router)   # ← new
 
 
 @app.get("/health", tags=["System"])
