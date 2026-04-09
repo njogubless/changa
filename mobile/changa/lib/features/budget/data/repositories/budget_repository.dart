@@ -1,147 +1,105 @@
-import 'dart:convert';
-import 'package:changa/features/budget/data/models/budget_model.dart';
-import 'package:changa/core/network/api_client.dart'; // adjust to your actual ApiClient path
-// import 'budget_repository.dart'; // Removed self-import to avoid circular dependency
+import 'dart:developer' as dev;
 
-// ── Mapping helpers ────────────────────────────────────────────────────────────
-//
-//  Flutter model  ↔  API field
-//  ─────────────────────────────────────────────────────
-//  BudgetLineItem      ↔  BudgetCategory  (backend name)
-//  BudgetTransaction   ↔  BudgetExpense   (backend name)
-//  BudgetType.chamaContribution  ↔  "chama"
-//  lineItemId          ↔  category_id
-//  spentAmount         ↔  spent_amount
-//  allocatedAmount     ↔  allocated_amount
+import 'package:changa/core/network/api_client.dart';
+import 'package:changa/features/budget/data/models/budget_model.dart';
+
+// ── Logger ─────────────────────────────────────────────────────────────────────
+// Logs appear in `flutter run` terminal and VS Code Debug Console.
+// Filter in terminal:  flutter run 2>&1 | grep "\[Budget\]"
+
+void _log(String msg) => dev.log('  $msg', name: 'Budget');
+void _err(String msg, [Object? e, StackTrace? st]) =>
+    dev.log(' $msg', name: 'Budget', error: e, stackTrace: st, level: 1000);
 
 // ── Type converters ────────────────────────────────────────────────────────────
 
-String _budgetTypeToApi(BudgetType t) {
+String _typeToApi(BudgetType t) {
   switch (t) {
-    case BudgetType.personal:
-      return 'personal';
-    case BudgetType.event:
-      return 'event';
-    case BudgetType.chamaContribution:
-      return 'chama';
+    case BudgetType.personal:          return 'personal';
+    case BudgetType.event:             return 'event';
+    case BudgetType.chamaContribution: return 'chama';
   }
 }
 
-BudgetType _budgetTypeFromApi(String s) {
+BudgetType _typeFromApi(String s) {
   switch (s) {
-    case 'event':
-      return BudgetType.event;
-    case 'chama':
-      return BudgetType.chamaContribution;
-    default:
-      return BudgetType.personal;
+    case 'event': return BudgetType.event;
+    case 'chama': return BudgetType.chamaContribution;
+    default:      return BudgetType.personal;
   }
 }
 
-/// Maps API category string → Flutter BudgetCategory enum.
-/// Falls back to [BudgetCategory.other] for unknown values.
-BudgetCategory _categoryFromApi(String s) {
+BudgetCategory _catFromApi(String s) {
   switch (s) {
-    case 'food':
-      return BudgetCategory.food;
-    case 'transport':
-      return BudgetCategory.transport;
-    case 'rent':
-      return BudgetCategory.rent;
-    case 'utilities':
-      return BudgetCategory.utilities;
-    case 'healthcare':
-      return BudgetCategory.healthcare;
-    case 'education':
-      return BudgetCategory.education;
-    case 'entertainment':
-      return BudgetCategory.entertainment;
-    case 'clothing':
-      return BudgetCategory.clothing;
-    case 'savings':
-      return BudgetCategory.savings;
-    case 'venue':
-      return BudgetCategory.venue;
-    case 'catering':
-      return BudgetCategory.catering;
-    case 'decoration':
-      return BudgetCategory.decoration;
-    case 'photography':
-      return BudgetCategory.photography;
-    case 'music':
-      return BudgetCategory.music;
-    case 'transport_event':
-      return BudgetCategory.transport_event;
-    case 'gifts':
-      return BudgetCategory.gifts;
-    case 'contribution':
-      return BudgetCategory.contribution;
-    default:
-      return BudgetCategory.other;
+    case 'food':            return BudgetCategory.food;
+    case 'transport':       return BudgetCategory.transport;
+    case 'rent':            return BudgetCategory.rent;
+    case 'utilities':       return BudgetCategory.utilities;
+    case 'healthcare':      return BudgetCategory.healthcare;
+    case 'education':       return BudgetCategory.education;
+    case 'entertainment':   return BudgetCategory.entertainment;
+    case 'clothing':        return BudgetCategory.clothing;
+    case 'savings':         return BudgetCategory.savings;
+    case 'venue':           return BudgetCategory.venue;
+    case 'catering':        return BudgetCategory.catering;
+    case 'decoration':      return BudgetCategory.decoration;
+    case 'photography':     return BudgetCategory.photography;
+    case 'music':           return BudgetCategory.music;
+    case 'transport_event': return BudgetCategory.transport_event;
+    case 'gifts':           return BudgetCategory.gifts;
+    case 'contribution':    return BudgetCategory.contribution;
+    default:                return BudgetCategory.other;
   }
 }
 
-String _categoryToApi(BudgetCategory c) => c.name;
+// ── JSON → model ───────────────────────────────────────────────────────────────
+// Dio auto-decodes JSON so response.data is already a Map — no jsonDecode() needed.
 
-// ── JSON → Flutter model converters ───────────────────────────────────────────
+BudgetLineItem _lineItemFromMap(Map<String, dynamic> j) => BudgetLineItem(
+      id: j['id'] as String,
+      category: _catFromApi(j['category'] as String),
+      customLabel: j['custom_label'] as String?,
+      allocatedAmount: (j['allocated_amount'] as num).toDouble(),
+      spentAmount: (j['spent_amount'] as num?)?.toDouble() ?? 0,
+    );
 
-BudgetLineItem _lineItemFromJson(Map<String, dynamic> j) => BudgetLineItem(
-  id: j['id'],
-  category: _categoryFromApi(j['category'] as String),
-  customLabel: j['custom_label'] as String?,
-  allocatedAmount: (j['allocated_amount'] as num).toDouble(),
-  spentAmount: (j['spent_amount'] as num?)?.toDouble() ?? 0,
-);
-
-/// The API stores expenses inside each category object.
-/// We flatten them into a single list on the BudgetModel.
-BudgetTransaction _transactionFromJson(
+BudgetTransaction _txFromMap(
   Map<String, dynamic> j, {
   required String budgetId,
   required String categoryId,
-}) => BudgetTransaction(
-  id: j['id'],
-  budgetId: budgetId,
-  lineItemId: categoryId,
-  // The API only has expenses — no income transactions
-  type: TransactionType.expense,
-  amount: (j['amount'] as num).toDouble(),
-  description: j['description'] as String,
-  date: DateTime.parse(j['date'] as String),
-);
+}) =>
+    BudgetTransaction(
+      id: j['id'] as String,
+      budgetId: budgetId,
+      lineItemId: categoryId,
+      type: TransactionType.expense, // API only has expenses
+      amount: (j['amount'] as num).toDouble(),
+      description: j['description'] as String,
+      date: DateTime.parse(j['date'] as String),
+    );
 
-BudgetModel _budgetFromJson(Map<String, dynamic> j) {
+BudgetModel _budgetFromMap(Map<String, dynamic> j) {
   final budgetId = j['id'] as String;
-
-  final categories =
-      (j['categories'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
-
-  final lineItems = categories.map(_lineItemFromJson).toList();
-
-  // Flatten all expenses from all categories into one transactions list
-  final transactions =
-      categories.expand((cat) {
-        final catId = cat['id'] as String;
-        final expenses =
-            (cat['expenses'] as List<dynamic>? ?? [])
-                .cast<Map<String, dynamic>>();
-        return expenses.map(
-          (e) => _transactionFromJson(e, budgetId: budgetId, categoryId: catId),
-        );
-      }).toList();
+  final cats = (j['categories'] as List? ?? []).cast<Map<String, dynamic>>();
+  final lineItems = cats.map(_lineItemFromMap).toList();
+  final transactions = cats.expand((cat) {
+    final catId = cat['id'] as String;
+    return (cat['expenses'] as List? ?? [])
+        .cast<Map<String, dynamic>>()
+        .map((e) => _txFromMap(e, budgetId: budgetId, categoryId: catId));
+  }).toList();
 
   return BudgetModel(
     id: budgetId,
     title: j['title'] as String,
-    type: _budgetTypeFromApi(j['type'] as String),
+    type: _typeFromApi(j['type'] as String),
     totalIncome: (j['total_income'] as num).toDouble(),
     lineItems: lineItems,
     transactions: transactions,
     createdAt: DateTime.parse(j['created_at'] as String),
-    eventDate:
-        j['event_date'] != null
-            ? DateTime.parse(j['event_date'] as String)
-            : null,
+    eventDate: j['event_date'] != null
+        ? DateTime.parse(j['event_date'] as String)
+        : null,
     linkedChamaId: j['linked_chama_id'] as String?,
     linkedChamaName: j['linked_chama_name'] as String?,
     linkedProjectId: j['linked_project_id'] as String?,
@@ -149,10 +107,8 @@ BudgetModel _budgetFromJson(Map<String, dynamic> j) {
   );
 }
 
-// ── API Repository ─────────────────────────────────────────────────────────────
+// ── Abstract interface ─────────────────────────────────────────────────────────
 
-// Ensure BudgetRepository is an abstract class or mixin in your codebase.
-// If it is not defined, define it as follows:
 abstract class BudgetRepository {
   Future<List<BudgetModel>> getBudgets();
   Future<BudgetModel> getBudget(String id);
@@ -183,25 +139,39 @@ abstract class BudgetRepository {
   });
 }
 
+// ── API Repository ─────────────────────────────────────────────────────────────
+
 class ApiBudgetRepository implements BudgetRepository {
   final ApiClient _api;
-
   const ApiBudgetRepository(this._api);
-
-  // ── Budgets ──────────────────────────────────────────────────────────────
 
   @override
   Future<List<BudgetModel>> getBudgets() async {
-    final response = await _api.get('/budgets');
-    final data = jsonDecode(response.data) as Map<String, dynamic>;
-    final items = (data['items'] as List).cast<Map<String, dynamic>>();
-    return items.map(_budgetFromJson).toList();
+    _log('→ GET /budgets');
+    try {
+      final res = await _api.get('/budgets');
+      _log('← status=${res.statusCode}  data=${res.data}');
+      final data = res.data as Map<String, dynamic>;
+      final items = (data['items'] as List).cast<Map<String, dynamic>>();
+      _log('   parsed ${items.length} budget(s)');
+      return items.map(_budgetFromMap).toList();
+    } catch (e, st) {
+      _err('getBudgets failed', e, st);
+      rethrow;
+    }
   }
 
   @override
   Future<BudgetModel> getBudget(String id) async {
-    final response = await _api.get('/budgets/$id');
-    return _budgetFromJson(jsonDecode(response.data) as Map<String, dynamic>);
+    _log('→ GET /budgets/$id');
+    try {
+      final res = await _api.get('/budgets/$id');
+      _log('← status=${res.statusCode}  data=${res.data}');
+      return _budgetFromMap(res.data as Map<String, dynamic>);
+    } catch (e, st) {
+      _err('getBudget($id) failed', e, st);
+      rethrow;
+    }
   }
 
   @override
@@ -216,21 +186,20 @@ class ApiBudgetRepository implements BudgetRepository {
     String? linkedProjectId,
     String? linkedProjectName,
   }) async {
-    final body = {
+    final payload = <String, dynamic>{
       'title': title,
-      'type': _budgetTypeToApi(type),
+      'type': _typeToApi(type),
       'total_income': totalIncome,
-      'categories':
-          lineItems
-              .map(
-                (item) => {
-                  'category': _categoryToApi(item.category),
-                  'custom_label': item.customLabel,
-                  'allocated_amount': item.allocatedAmount,
-                  'sort_order': lineItems.indexOf(item),
-                },
-              )
-              .toList(),
+      'categories': lineItems
+          .asMap()
+          .entries
+          .map((e) => <String, dynamic>{
+                'category': e.value.category.name,
+                'custom_label': e.value.customLabel,
+                'allocated_amount': e.value.allocatedAmount,
+                'sort_order': e.key,
+              })
+          .toList(),
       if (eventDate != null) 'event_date': eventDate.toIso8601String(),
       if (linkedChamaId != null) 'linked_chama_id': linkedChamaId,
       if (linkedChamaName != null) 'linked_chama_name': linkedChamaName,
@@ -238,13 +207,23 @@ class ApiBudgetRepository implements BudgetRepository {
       if (linkedProjectName != null) 'linked_project_name': linkedProjectName,
     };
 
-    final response = await _api.post('/budgets', data: body);
-    return _budgetFromJson(jsonDecode(response.data) as Map<String, dynamic>);
+    _log('→ POST /budgets  payload=$payload');
+
+    try {
+      final res = await _api.post('/budgets', data: payload);
+      _log('← status=${res.statusCode}  data=${res.data}');
+      final budget = _budgetFromMap(res.data as Map<String, dynamic>);
+      _log('✅ created budget id=${budget.id} title="${budget.title}"');
+      return budget;
+    } catch (e, st) {
+      _err('createBudget failed', e, st);
+      rethrow;
+    }
   }
 
   @override
   Future<BudgetModel> updateBudget(BudgetModel budget) async {
-    final body = {
+    final payload = <String, dynamic>{
       'title': budget.title,
       'total_income': budget.totalIncome,
       if (budget.eventDate != null)
@@ -258,48 +237,64 @@ class ApiBudgetRepository implements BudgetRepository {
         'linked_project_name': budget.linkedProjectName,
     };
 
-    final response = await _api.put('/budgets/${budget.id}', data: body);
-    return _budgetFromJson(jsonDecode(response.data) as Map<String, dynamic>);
+    _log('→ PUT /budgets/${budget.id}  payload=$payload');
+
+    try {
+      final res = await _api.put('/budgets/${budget.id}', data: payload);
+      _log('← status=${res.statusCode}  data=${res.data}');
+      return _budgetFromMap(res.data as Map<String, dynamic>);
+    } catch (e, st) {
+      _err('updateBudget(${budget.id}) failed', e, st);
+      rethrow;
+    }
   }
 
   @override
   Future<void> deleteBudget(String id) async {
-    await _api.delete('/budgets/$id');
+    _log('→ DELETE /budgets/$id');
+    try {
+      final res = await _api.delete('/budgets/$id');
+      _log('← status=${res.statusCode}');
+    } catch (e, st) {
+      _err('deleteBudget($id) failed', e, st);
+      rethrow;
+    }
   }
-
-  // ── Expenses (mapped from Flutter's "transactions") ───────────────────────
-  //
-  //  Flutter's addTransaction takes a lineItemId — that maps directly to
-  //  the API's category_id, so we use it in the URL path.
 
   @override
   Future<BudgetModel> addTransaction({
     required String budgetId,
-    required String lineItemId, // == category_id on the API
+    required String lineItemId,
     required TransactionType type,
     required double amount,
     required String description,
     DateTime? date,
   }) async {
-    // The API only supports expenses. Income transactions aren't persisted
-    // server-side, so we skip posting them and just return the current budget.
     if (type == TransactionType.income) {
+      _log('ℹ️  addTransaction: income type — no API call, re-fetching');
       return getBudget(budgetId);
     }
 
-    final body = {
+    final payload = <String, dynamic>{
       'description': description,
       'amount': amount,
       if (date != null) 'date': date.toIso8601String(),
     };
 
-    await _api.post(
-      '/budgets/$budgetId/categories/$lineItemId/expenses',
-      data: body,
-    );
+    _log('→ POST /budgets/$budgetId/categories/$lineItemId/expenses');
+    _log('   payload=$payload');
 
-    // Re-fetch the full budget so spent_amount totals are up to date
-    return getBudget(budgetId);
+    try {
+      final res = await _api.post(
+        '/budgets/$budgetId/categories/$lineItemId/expenses',
+        data: payload,
+      );
+      _log('← status=${res.statusCode}  data=${res.data}');
+      return getBudget(budgetId);
+    } catch (e, st) {
+      _err('addTransaction failed', e, st);
+      rethrow;
+    }
   }
 
   @override
@@ -307,18 +302,25 @@ class ApiBudgetRepository implements BudgetRepository {
     required String budgetId,
     required String transactionId,
   }) async {
-    // We need the categoryId to build the URL. Fetch the budget first to find it.
-    final budget = await getBudget(budgetId);
-    final tx = budget.transactions.firstWhere(
-      (t) => t.id == transactionId,
-      orElse: () => throw Exception('Transaction not found'),
-    );
+    _log('→ deleteTransaction budgetId=$budgetId txId=$transactionId');
+    try {
+      final budget = await getBudget(budgetId);
+      final tx = budget.transactions.firstWhere(
+        (t) => t.id == transactionId,
+        orElse: () =>
+            throw Exception('Transaction $transactionId not found'),
+      );
+      _log('   tx belongs to categoryId=${tx.lineItemId}');
+      _log('→ DELETE /budgets/$budgetId/categories/${tx.lineItemId}/expenses/$transactionId');
 
-    await _api.delete(
-      '/budgets/$budgetId/categories/${tx.lineItemId}/expenses/$transactionId',
-    );
-
-    // Re-fetch to get updated spent_amount totals
-    return getBudget(budgetId);
+      final res = await _api.delete(
+        '/budgets/$budgetId/categories/${tx.lineItemId}/expenses/$transactionId',
+      );
+      _log('← status=${res.statusCode}');
+      return getBudget(budgetId);
+    } catch (e, st) {
+      _err('deleteTransaction failed', e, st);
+      rethrow;
+    }
   }
 }
