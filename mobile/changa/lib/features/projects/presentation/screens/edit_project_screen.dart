@@ -20,7 +20,7 @@ class _EditProjectScreenState extends ConsumerState<EditProjectScreen> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
   late final TextEditingController _amountCtrl;
-  late String _visibility;
+  //late String _visibility;
   late bool _isAnonymous;
   DateTime? _deadline;
   String? _errorMessage;
@@ -56,7 +56,7 @@ class _EditProjectScreenState extends ConsumerState<EditProjectScreen> {
               ? _descCtrl.text.trim()
               : null,
           targetAmount: double.parse(_amountCtrl.text.replaceAll(',', '')),
-          visibility: _visibility,
+          //visibility: _visibility,
           isAnonymous: _isAnonymous,
           deadline: _deadline,
         );
@@ -216,26 +216,26 @@ class _EditProjectScreenState extends ConsumerState<EditProjectScreen> {
               ),
               const SizedBox(height: 20),
 
-              const ProjectSectionLabel('Visibility'),
-              const SizedBox(height: 10),
-              Row(children: [
-                ProjectVisibilityOption(
-                  label: 'Public',
-                  subtitle: 'Anyone can see',
-                  icon: Icons.public,
-                  selected: _visibility == 'public',
-                  onTap: () => setState(() => _visibility = 'public'),
-                ),
-                const SizedBox(width: 12),
-                ProjectVisibilityOption(
-                  label: 'Private',
-                  subtitle: 'Invite only',
-                  icon: Icons.lock_outline,
-                  selected: _visibility == 'private',
-                  onTap: () => setState(() => _visibility = 'private'),
-                ),
-              ]),
-              const SizedBox(height: 20),
+              //const ProjectSectionLabel('Visibility'),
+              //const SizedBox(height: 10),
+              // Row(children: [
+              //   ProjectVisibilityOption(
+              //     label: 'Public',
+              //     subtitle: 'Anyone can see',
+              //     icon: Icons.public,
+              //     //selected: _visibility == 'public',
+              //     onTap: () => setState(() => _visibility = 'public'),
+              //   ),
+              //   const SizedBox(width: 12),
+              //   ProjectVisibilityOption(
+              //     label: 'Private',
+              //     subtitle: 'Invite only',
+              //     icon: Icons.lock_outline,
+              //     //selected: _visibility == 'private',
+              //     onTap: () => setState(() => _visibility = 'private'),
+              //   ),
+              // ]),
+              //const SizedBox(height: 20),
 
               ProjectToggleRow(
                 title: 'Anonymous contributions',
