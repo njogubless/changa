@@ -198,7 +198,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
       ),
       GoRoute(
-        path: '/chamas:id/settings',
+        path: '/chamas/:id/settings',
         builder: (_, state)=> ChamaSettingsScreen(
           chamaId:state.pathParameters['id']!,),),
     ],
