@@ -25,7 +25,7 @@ class EditProjectNotifier extends StateNotifier<EditProjectState> {
     required String title,
     String? description,
     required double targetAmount,
-    required String visibility,
+    //required String visibility,
     required bool isAnonymous,
     DateTime? deadline,
   }) async {
@@ -36,7 +36,6 @@ class EditProjectNotifier extends StateNotifier<EditProjectState> {
         title: title,
         description: description,
         targetAmount: targetAmount,
-        visibility: visibility,
         isAnonymous: isAnonymous,
         deadline: deadline,
       );
