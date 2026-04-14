@@ -25,6 +25,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phoneFocus = FocusNode();
   final _passwordFocus = FocusNode();
   String? _errorMessage;
+  bool _hasConsented = false;
 
   @override
   void dispose() {
@@ -39,38 +40,41 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     super.dispose();
   }
 
-Future<void> _submit() async {
-  if (!_formKey.currentState!.validate()) return;
-  setState(() => _errorMessage = null);
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _errorMessage = null);
 
-  debugPrint('>>> SUBMIT STARTED');
+    debugPrint('>>> SUBMIT STARTED');
 
-  try {
-    await ref.read(authNotifierProvider.notifier).register(
-          fullName: _nameCtrl.text.trim(),
-          email: _emailCtrl.text.trim(),
-          phone: _phoneCtrl.text.trim(),
-          password: _passwordCtrl.text,
-        );
-    debugPrint('>>> REGISTER CALL COMPLETED');
-  } catch (e, st) {
-    debugPrint('>>> REGISTER THREW: $e');
-    debugPrint('>>> STACK: $st');
+    try {
+      await ref
+          .read(authNotifierProvider.notifier)
+          .register(
+            fullName: _nameCtrl.text.trim(),
+            email: _emailCtrl.text.trim(),
+            phone: _phoneCtrl.text.trim(),
+            password: _passwordCtrl.text,
+          );
+      debugPrint('>>> REGISTER CALL COMPLETED');
+    } catch (e, st) {
+      debugPrint('>>> REGISTER THREW: $e');
+      debugPrint('>>> STACK: $st');
+    }
+
+    if (!mounted) return;
+    debugPrint('>>> MOUNTED CHECK PASSED');
+
+    final state = ref.read(authNotifierProvider);
+    debugPrint('>>> STATE AFTER REGISTER: $state');
+
+    if (state is AuthError) {
+      setState(() => _errorMessage = _friendlyError(state.message));
+    }
   }
-
-  if (!mounted) return;
-  debugPrint('>>> MOUNTED CHECK PASSED');
-
-  final state = ref.read(authNotifierProvider);
-  debugPrint('>>> STATE AFTER REGISTER: $state');
-
-  if (state is AuthError) {
-    setState(() => _errorMessage = _friendlyError(state.message));
-  }
-}
 
   String _friendlyError(String raw) {
-    if (raw.contains('Email already')) return 'This email is already registered.';
+    if (raw.contains('Email already'))
+      return 'This email is already registered.';
     if (raw.contains('Phone') && raw.contains('registered')) {
       return 'This phone number is already registered.';
     }
@@ -132,15 +136,16 @@ Future<void> _submit() async {
                   controller: _nameCtrl,
                   focusNode: _nameFocus,
                   textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_emailFocus),
+                  onFieldSubmitted:
+                      (_) => FocusScope.of(context).requestFocus(_emailFocus),
                   prefixIcon: const Icon(
                     Icons.person_outline,
                     color: AppColors.green,
                     size: 20,
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Name is required';
+                    if (v == null || v.trim().isEmpty)
+                      return 'Name is required';
                     if (v.trim().length < 2) return 'Name is too short';
                     return null;
                   },
@@ -155,8 +160,8 @@ Future<void> _submit() async {
                   focusNode: _emailFocus,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_phoneFocus),
+                  onFieldSubmitted:
+                      (_) => FocusScope.of(context).requestFocus(_phoneFocus),
                   prefixIcon: const Icon(
                     Icons.mail_outline,
                     color: AppColors.green,
@@ -180,8 +185,9 @@ Future<void> _submit() async {
                   focusNode: _phoneFocus,
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.next,
-                  onFieldSubmitted: (_) =>
-                      FocusScope.of(context).requestFocus(_passwordFocus),
+                  onFieldSubmitted:
+                      (_) =>
+                          FocusScope.of(context).requestFocus(_passwordFocus),
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   prefixIcon: const Icon(
                     Icons.phone_android,
@@ -220,9 +226,23 @@ Future<void> _submit() async {
                 ),
                 const SizedBox(height: 32),
 
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    'I agree to the Terms and Conditions',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.green,
+                    ),
+                  ),
+                  value: _hasConsented,
+                  onChanged: (v) => setState(() => _hasConsented = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                const SizedBox(height: 24),
+
                 // Submit
                 LoadingButton(
-                  onPressed: _submit,
+                  onPressed: _hasConsented ? _submit : null,
                   isLoading: isLoading,
                   label: 'Create account',
                 ),
