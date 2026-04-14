@@ -73,8 +73,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   String _friendlyError(String raw) {
-    if (raw.contains('Email already'))
+    if (raw.contains('Email already')) {
       return 'This email is already registered.';
+    }
     if (raw.contains('Phone') && raw.contains('registered')) {
       return 'This phone number is already registered.';
     }
@@ -144,8 +145,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     size: 20,
                   ),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty)
+                    if (v == null || v.trim().isEmpty) {
                       return 'Name is required';
+                    }
                     if (v.trim().length < 2) return 'Name is too short';
                     return null;
                   },
