@@ -1,6 +1,7 @@
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/features/auth/data/models/auth_models.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
+import 'package:changa/features/auth/presentation/screens/policy_view_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,12 +61,32 @@ class AppDrawer extends ConsumerWidget {
             _DrawerItem(
               icon: Icons.privacy_tip_outlined,
               label: 'Privacy Policy',
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) =>
+                            PolicyViewerScreen(type: PolicyType.privacyPolicy),
+                  ),
+                );
+              },
             ),
             _DrawerItem(
               icon: Icons.description_outlined,
               label: 'Terms of Service',
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) =>
+                            PolicyViewerScreen(type: PolicyType.termsOfService),
+                  ),
+                );
+              },
             ),
 
             const Spacer(),
