@@ -38,7 +38,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     access_token = create_access_token({"sub": str(user.id)})
     refresh_token = create_refresh_token({"sub": str(user.id)})
 
-    # Persist refresh token
+    
     db.add(RefreshToken(
         user_id=user.id,
         token=refresh_token,
@@ -93,7 +93,7 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
     if not stored:
         raise HTTPException(status_code=401, detail="Refresh token revoked or not found")
 
-    # Rotate: revoke old, issue new
+    
     stored.is_revoked = True
     new_refresh = create_refresh_token({"sub": token_payload["sub"]})
     db.add(RefreshToken(

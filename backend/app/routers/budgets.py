@@ -17,7 +17,6 @@ from app.schemas.budgets import (
 router = APIRouter(prefix="/budgets", tags=["Budgets"])
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _get_budget_or_404(budget_id: UUID, user: User, db: Session) -> Budget:
     budget = db.query(Budget).filter(
@@ -41,7 +40,6 @@ def _get_category_or_404(
     return category
 
 
-# ── Budget CRUD ────────────────────────────────────────────────────────────────
 
 @router.get("", response_model=BudgetListResponse)
 def list_budgets(
@@ -80,7 +78,7 @@ def create_budget(
     db.add(budget)
     db.flush()
 
-    # Create initial categories
+    
     for i, cat in enumerate(payload.categories):
         db.add(BudgetCategory(
             budget_id=budget.id,
@@ -133,7 +131,7 @@ def delete_budget(
     db.commit()
 
 
-# ── Category CRUD ──────────────────────────────────────────────────────────────
+
 
 @router.post("/{budget_id}/categories", response_model=BudgetCategoryResponse, status_code=201)
 def add_category(
@@ -189,7 +187,7 @@ def delete_category(
     db.commit()
 
 
-# ── Expense CRUD ───────────────────────────────────────────────────────────────
+
 
 @router.post(
     "/{budget_id}/categories/{category_id}/expenses",
@@ -214,7 +212,7 @@ def add_expense(
     )
     db.add(expense)
 
-    # Update category spent_amount
+    
     category.spent_amount += payload.amount
 
     db.commit()
@@ -243,13 +241,13 @@ def delete_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    # Reverse the spent amount
+    
     category.spent_amount = max(0.0, category.spent_amount - expense.amount)
     db.delete(expense)
     db.commit()
 
 
-# ── Summary endpoints ──────────────────────────────────────────────────────────
+
 
 @router.get("/{budget_id}/summary")
 def get_budget_summary(

@@ -30,7 +30,6 @@ def _get_active_project(project_id: UUID, db: Session) -> Project:
     return project
 
 
-# ── M-Pesa STK Push ────────────────────────────────────────────────────────────
 
 @router.post("/contributions/mpesa", response_model=ContributionResponse, status_code=201)
 async def contribute_mpesa(
@@ -70,7 +69,7 @@ async def contribute_mpesa(
     return ContributionResponse.model_validate(contribution)
 
 
-# ── Airtel Money ───────────────────────────────────────────────────────────────
+
 
 @router.post("/contributions/airtel", response_model=ContributionResponse, status_code=201)
 async def contribute_airtel(
@@ -109,7 +108,7 @@ async def contribute_airtel(
     return ContributionResponse.model_validate(contribution)
 
 
-# ── Status polling (Flutter polls every 3 seconds) ────────────────────────────
+
 
 @router.get("/contributions/status/{reference}", response_model=ContributionStatusResponse)
 def contribution_status(
@@ -133,8 +132,6 @@ def contribution_status(
     )
 
 
-# ── My contribution history ────────────────────────────────────────────────────
-
 @router.get("/users/me/contributions", response_model=list[ContributionResponse])
 def my_contributions(
     db: Session = Depends(get_db),
@@ -146,13 +143,13 @@ def my_contributions(
     ]
 
 
-# ── M-Pesa Callback (called by Safaricom — no auth) ───────────────────────────
+
 
 @router.post("/payments/mpesa/callback")
 async def mpesa_callback(payload: MpesaCallbackRequest, db: Session = Depends(get_db)):
     result = mpesa.parse_callback(payload.model_dump())
 
-    # Find contribution by AccountReference embedded in callback
+    
     stk_callback = payload.Body.get("stkCallback", {})
     items = {
         item["Name"]: item.get("Value")
@@ -180,7 +177,7 @@ async def mpesa_callback(payload: MpesaCallbackRequest, db: Session = Depends(ge
     return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
 
-# ── Airtel Callback (called by Airtel — no auth) ──────────────────────────────
+
 
 @router.post("/payments/airtel/callback")
 async def airtel_callback(payload: AirtelCallbackRequest, db: Session = Depends(get_db)):

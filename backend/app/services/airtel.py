@@ -22,7 +22,7 @@ async def initiate_payment(phone: str, amount: float, reference: str) -> dict:
     """Initiate Airtel Money payment."""
     token = await get_access_token()
 
-    # Airtel expects phone without country code prefix
+    
     airtel_phone = phone.replace("254", "0", 1) if phone.startswith("254") else phone
 
     payload = {

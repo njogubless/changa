@@ -5,7 +5,6 @@ from datetime import datetime
 from app.models.models import BudgetType, BudgetCategoryType
 
 
-# ── Budget Category ────────────────────────────────────────────────────────────
 
 class BudgetCategoryCreate(BaseModel):
     category: BudgetCategoryType = BudgetCategoryType.OTHER
@@ -55,7 +54,6 @@ class BudgetCategoryResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ── Budget ─────────────────────────────────────────────────────────────────────
 
 class BudgetCreateRequest(BaseModel):
     title: str
@@ -120,8 +118,6 @@ class BudgetListResponse(BaseModel):
     items: List[BudgetResponse]
     total: int
 
-
-# ── Expense ────────────────────────────────────────────────────────────────────
 
 class ExpenseCreateRequest(BaseModel):
     description: str

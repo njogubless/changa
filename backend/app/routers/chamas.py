@@ -21,7 +21,7 @@ import math
 router = APIRouter(prefix="/chamas", tags=["Chamas"])
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _get_chama_or_404(chama_id: UUID, db: Session) -> Chama:
     chama = db.query(Chama).filter(Chama.id == chama_id).first()
@@ -57,8 +57,6 @@ def _member_response(member: ChamaMember) -> ChamaMemberResponse:
     )
 
 
-# ── Create chama ───────────────────────────────────────────────────────────────
-
 @router.post("", response_model=ChamaResponse, status_code=201)
 def create_chama(
     payload: ChamaCreateRequest,
@@ -74,7 +72,7 @@ def create_chama(
     db.add(chama)
     db.flush()
 
-    # Creator is automatically owner member
+    
     db.add(ChamaMember(
         chama_id=chama.id,
         user_id=current_user.id,
@@ -85,7 +83,6 @@ def create_chama(
     return ChamaResponse.model_validate(chama)
 
 
-# ── List my chamas ─────────────────────────────────────────────────────────────
 
 @router.get("", response_model=ChamaListResponse)
 def list_my_chamas(
@@ -103,7 +100,6 @@ def list_my_chamas(
     )
 
 
-# ── Get chama detail ───────────────────────────────────────────────────────────
 
 @router.get("/{chama_id}", response_model=ChamaDetailResponse)
 def get_chama(
@@ -129,7 +125,6 @@ def get_chama(
     )
 
 
-# ── Update chama ───────────────────────────────────────────────────────────────
 
 @router.put("/{chama_id}", response_model=ChamaResponse)
 def update_chama(
@@ -148,7 +143,7 @@ def update_chama(
     return ChamaResponse.model_validate(chama)
 
 
-# ── Join chama via invite code ─────────────────────────────────────────────────
+
 
 @router.post("/join", response_model=ChamaResponse, status_code=200)
 def join_chama(
@@ -181,7 +176,7 @@ def join_chama(
     return ChamaResponse.model_validate(chama)
 
 
-# ── Leave chama ────────────────────────────────────────────────────────────────
+
 
 @router.post("/{chama_id}/leave", status_code=200)
 def leave_chama(
@@ -203,7 +198,7 @@ def leave_chama(
     return {"detail": f"You have left {chama.name}"}
 
 
-# ── List members ───────────────────────────────────────────────────────────────
+
 
 @router.get("/{chama_id}/members", response_model=list[ChamaMemberResponse])
 def list_members(
@@ -216,7 +211,6 @@ def list_members(
     return [_member_response(m) for m in chama.members]
 
 
-# ── Remove a member (owner only) ───────────────────────────────────────────────
 
 @router.delete("/{chama_id}/members/{user_id}", status_code=200)
 def remove_member(
@@ -243,7 +237,6 @@ def remove_member(
     return {"detail": "Member removed"}
 
 
-# ── Regenerate invite code (owner only) ────────────────────────────────────────
 
 @router.post("/{chama_id}/regenerate-code", response_model=ChamaResponse)
 def regenerate_invite_code(
@@ -261,7 +254,7 @@ def regenerate_invite_code(
     return ChamaResponse.model_validate(chama)
 
 
-# ── List projects in chama ─────────────────────────────────────────────────────
+
 
 @router.get("/{chama_id}/projects", response_model=ProjectListResponse)
 def list_chama_projects(
@@ -291,7 +284,7 @@ def list_chama_projects(
     )
 
 
-# ── Create project inside chama (owner only) ───────────────────────────────────
+
 
 @router.post("/{chama_id}/projects", response_model=ProjectResponse, status_code=201)
 def create_chama_project(

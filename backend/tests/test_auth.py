@@ -118,6 +118,6 @@ def test_logout(client):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert r.status_code == 200
-    # Revoked refresh token should now fail
+    
     r2 = client.post("/auth/refresh", json={"refresh_token": refresh})
     assert r2.status_code == 401

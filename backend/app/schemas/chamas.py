@@ -5,7 +5,7 @@ from datetime import datetime
 from app.models.models import ChamaMemberRole
 
 
-# ── Chama ──────────────────────────────────────────────────────────────────────
+
 
 class ChamaCreateRequest(BaseModel):
     name: str

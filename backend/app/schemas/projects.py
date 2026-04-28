@@ -8,7 +8,7 @@ from app.models.models import (
 )
 
 
-# ── Projects ───────────────────────────────────────────────────────────────────
+
 
 class ProjectCreateRequest(BaseModel):
     title: str
@@ -81,7 +81,7 @@ class ProjectResponse(BaseModel):
     is_funded: bool
     contributor_count: int
 
-    # Payment account info — shown to contributors before paying
+    
     payment_type: PaymentAccountType
     payment_number: str
     payment_name: Optional[str]
@@ -99,7 +99,7 @@ class ProjectListResponse(BaseModel):
     pages: int
 
 
-# ── Payments ───────────────────────────────────────────────────────────────────
+
 
 class MpesaContributeRequest(BaseModel):
     project_id: UUID

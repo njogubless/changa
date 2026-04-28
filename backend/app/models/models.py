@@ -21,7 +21,7 @@ def generate_invite_code() -> str:
     return f"CHNG-{secrets.token_hex(2).upper()}"
 
 
-# ── Enums ──────────────────────────────────────────────────────────────────────
+
 
 class ChamaMemberRole(str, enum.Enum):
     OWNER = "owner"
@@ -84,7 +84,7 @@ class BudgetCategoryType(str, enum.Enum):
     OTHER = "other"
 
 
-# ── User & Auth Models ─────────────────────────────────────────────────────────
+
 
 class User(Base):
     __tablename__ = "users"
@@ -121,8 +121,6 @@ class RefreshToken(Base):
 
     user = relationship("User", back_populates="refresh_tokens")
 
-
-# ── Chama Models ───────────────────────────────────────────────────────────────
 
 class Chama(Base):
     __tablename__ = "chamas"
@@ -164,7 +162,7 @@ class ChamaMember(Base):
     user  = relationship("User", back_populates="chama_memberships", foreign_keys=[user_id])
 
 
-# ── Project Models ─────────────────────────────────────────────────────────────
+
 
 class Project(Base):
     __tablename__ = "projects"
@@ -235,7 +233,7 @@ class Contribution(Base):
     user    = relationship("User", back_populates="contributions")
 
 
-# ── Budget Models ──────────────────────────────────────────────────────────────
+
 
 class Budget(Base):
     """Top-level budget — personal, event, or chama-linked."""
@@ -249,13 +247,13 @@ class Budget(Base):
     currency        = Column(String(3), default="KES")
     event_date      = Column(DateTime(timezone=True), nullable=True)
 
-    # Optional link to a Chama (for chama-type budgets)
+    
     linked_chama_id   = Column(UUID(as_uuid=True), ForeignKey("chamas.id"), nullable=True, index=True)
-    linked_chama_name = Column(String(255), nullable=True)  # cached name
+    linked_chama_name = Column(String(255), nullable=True)  
 
-    # Optional link to a specific project
+    
     linked_project_id   = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True)
-    linked_project_name = Column(String(255), nullable=True)  # cached name
+    linked_project_name = Column(String(255), nullable=True) 
 
     created_at = Column(DateTime(timezone=True), default=utcnow)
     updated_at = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -298,7 +296,7 @@ class BudgetCategory(Base):
     sort_order       = Column(Integer, nullable=False, default=0)
     created_at       = Column(DateTime(timezone=True), default=utcnow)
 
-    # Relationships
+    
     budget   = relationship("Budget", back_populates="categories")
     expenses = relationship("BudgetExpense", back_populates="category",
                             cascade="all, delete-orphan",

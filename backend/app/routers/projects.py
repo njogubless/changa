@@ -14,7 +14,6 @@ from app.schemas.projects import (
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _get_project_or_404(project_id: UUID, db: Session) -> Project:
     project = db.query(Project).filter(Project.id == project_id).first()
@@ -30,7 +29,7 @@ def _assert_chama_member(project: Project, user: User, db: Session) -> None:
         ChamaMember.user_id == user.id,
     ).first()
     if not is_member:
-        # Return 404 not 403 — don't reveal the project exists
+        
         raise HTTPException(status_code=404, detail="Project not found")
 
 
@@ -39,7 +38,7 @@ def _assert_owner(project: Project, user: User) -> None:
         raise HTTPException(status_code=403, detail="Only the project owner can do this")
 
 
-# ── Get single project ─────────────────────────────────────────────────────────
+
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
@@ -52,7 +51,7 @@ def get_project(
     return ProjectResponse.model_validate(project)
 
 
-# ── Update project (owner only) ────────────────────────────────────────────────
+
 
 @router.put("/{project_id}", response_model=ProjectResponse)
 def update_project(
@@ -72,7 +71,7 @@ def update_project(
     return ProjectResponse.model_validate(project)
 
 
-# ── Delete project (owner only) ────────────────────────────────────────────────
+
 
 @router.delete("/{project_id}", status_code=204)
 def delete_project(
@@ -88,7 +87,7 @@ def delete_project(
     db.commit()
 
 
-# ── Contributors ───────────────────────────────────────────────────────────────
+
 
 @router.get("/{project_id}/contributors")
 def get_contributors(
