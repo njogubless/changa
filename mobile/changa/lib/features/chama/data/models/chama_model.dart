@@ -1,7 +1,7 @@
 enum ChamaMemberRole { owner, admin, member }
 enum PaymentAccountType { paybill, till, pochi }
 
-// ── Chama ──────────────────────────────────────────────────────────────────
+
 
 class ChamaModel {
   final String id;

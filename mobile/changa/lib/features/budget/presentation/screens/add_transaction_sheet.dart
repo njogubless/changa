@@ -93,7 +93,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Handle ───────────────────────────────────────────
+           
             Center(
               child: Container(
                 width: 40,
@@ -110,7 +110,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                 style: AppTextStyles.h3.copyWith(color: AppColors.forest)),
             const SizedBox(height: 20),
 
-            // ── Error ────────────────────────────────────────────
+            
             if (_error != null) ...[
               Container(
                 padding: const EdgeInsets.all(12),
@@ -134,7 +134,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
               const SizedBox(height: 14),
             ],
 
-            // ── Type toggle ──────────────────────────────────────
+            
             _FieldLabel('Type'),
             const SizedBox(height: 8),
             Row(
@@ -200,7 +200,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ),
             const SizedBox(height: 16),
 
-            // ── Category ─────────────────────────────────────────
+            
             _FieldLabel('Category'),
             const SizedBox(height: 8),
             Container(
@@ -239,7 +239,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ),
             const SizedBox(height: 16),
 
-            // ── Amount ───────────────────────────────────────────
+            
             _FieldLabel('Amount (KES)'),
             const SizedBox(height: 8),
             TextFormField(
@@ -262,7 +262,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ),
             const SizedBox(height: 16),
 
-            // ── Description ──────────────────────────────────────
+            
             _FieldLabel('Description'),
             const SizedBox(height: 8),
             TextFormField(
@@ -278,7 +278,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ),
             const SizedBox(height: 16),
 
-            // ── Date ─────────────────────────────────────────────
+            
             _FieldLabel('Date'),
             const SizedBox(height: 8),
             GestureDetector(
@@ -324,7 +324,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             ),
             const SizedBox(height: 24),
 
-            // ── Submit ───────────────────────────────────────────
+            
             ElevatedButton(
               onPressed: _isLoading ? null : _submit,
               child: _isLoading

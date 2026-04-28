@@ -51,10 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ),
   );
 }
-    // if (state is AuthError && mounted) {
-    //   setState(() => _errorMessage = _friendlyError(state.message));
-    // }
-    // Authenticated → router redirects automatically
+   
   }
 
 
@@ -81,13 +78,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // Error
+                
                 if (_errorMessage != null) ...[
                   ErrorBanner(message: _errorMessage!),
                   const SizedBox(height: 20),
                 ],
 
-                // Email
+                
                 AuthTextField(
                   label: 'EMAIL',
                   hint: 'amina@example.com',
@@ -110,7 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Password
+              
                 AuthTextField(
                   label: 'PASSWORD',
                   hint: '••••••••',
@@ -132,7 +129,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Sign in button
+                
                 LoadingButton(
                   onPressed: _submit,
                   isLoading: isLoading,
@@ -140,7 +137,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Register link
+                
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,

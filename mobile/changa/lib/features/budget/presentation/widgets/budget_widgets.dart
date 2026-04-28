@@ -3,12 +3,12 @@ import 'package:changa/features/budget/data/models/budget_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-// ── Formatter (single source of truth) ────────────────────────────────────
+
 
 final _fmt = NumberFormat('#,##0', 'en_KE');
 String kesFormat(double v) => 'KES ${_fmt.format(v)}';
 
-// ── Shared stat card (used in BudgetScreen + BudgetDetailScreen) ───────────
+
 
 class BudgetStatCard extends StatelessWidget {
   final String label;
@@ -62,7 +62,7 @@ class BudgetStatCard extends StatelessWidget {
       );
 }
 
-// ── Shared section label ────────────────────────────────────────────────────
+
 
 class BudgetSectionLabel extends StatelessWidget {
   final String text;
@@ -78,7 +78,7 @@ class BudgetSectionLabel extends StatelessWidget {
       );
 }
 
-// ── Shared empty state ──────────────────────────────────────────────────────
+
 
 class BudgetEmptyState extends StatelessWidget {
   final String title;
@@ -140,7 +140,7 @@ class BudgetEmptyState extends StatelessWidget {
       );
 }
 
-// ── Shared error state ──────────────────────────────────────────────────────
+
 
 class BudgetErrorState extends StatelessWidget {
   final String message;
@@ -172,7 +172,7 @@ class BudgetErrorState extends StatelessWidget {
       );
 }
 
-// ── Shared error banner (form-level) ───────────────────────────────────────
+
 
 class BudgetErrorBanner extends StatelessWidget {
   final String message;
@@ -202,7 +202,7 @@ class BudgetErrorBanner extends StatelessWidget {
       );
 }
 
-// ── Category helper (single source of truth) ──────────────────────────────
+
 
 
 

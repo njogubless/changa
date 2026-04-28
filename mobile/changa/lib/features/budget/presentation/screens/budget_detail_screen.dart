@@ -64,7 +64,7 @@ class BudgetDetailScreen extends ConsumerWidget {
       backgroundColor: AppColors.cream,
       body: CustomScrollView(
         slivers: [
-          // ── Header ─────────────────────────────────────────────
+        
           SliverAppBar(
             expandedHeight: 230,
             pinned: true,
@@ -84,10 +84,8 @@ class BudgetDetailScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Overview cards ──────────────────────────────────────
           SliverToBoxAdapter(child: _OverviewSection(budget: budget)),
 
-          // ── Categories ─────────────────────────────────────────
           SliverToBoxAdapter(
             child: _SectionHeading(
               title: 'CATEGORIES',
@@ -122,7 +120,7 @@ class BudgetDetailScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Transactions ────────────────────────────────────────
+        
           SliverToBoxAdapter(
             child: _SectionHeading(title: 'TRANSACTIONS'),
           ),
@@ -152,7 +150,7 @@ class BudgetDetailScreen extends ConsumerWidget {
         ],
       ),
 
-      // ── FAB ─────────────────────────────────────────────────────
+      
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openAddTransaction(context, ref, budget, null),
         backgroundColor: AppColors.forest,
@@ -262,7 +260,6 @@ class BudgetDetailScreen extends ConsumerWidget {
   }
 }
 
-// ── Detail header ───────────────────────────────────────────────────────────
 
 class _DetailHeader extends StatelessWidget {
   final BudgetModel budget;
@@ -350,7 +347,6 @@ class _DetailHeader extends StatelessWidget {
   }
 }
 
-// ── Overview section ────────────────────────────────────────────────────────
 
 class _OverviewSection extends StatelessWidget {
   final BudgetModel budget;
@@ -442,7 +438,7 @@ class _StatCard extends StatelessWidget {
       );
 }
 
-// ── Section heading ─────────────────────────────────────────────────────────
+
 
 class _SectionHeading extends StatelessWidget {
   final String title;
@@ -469,7 +465,7 @@ class _SectionHeading extends StatelessWidget {
       );
 }
 
-// ── Line item card ──────────────────────────────────────────────────────────
+
 
 class _LineItemCard extends StatelessWidget {
   final BudgetLineItem item;
@@ -528,7 +524,7 @@ class _LineItemCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Quick add button
+              
               GestureDetector(
                 onTap: onAddTransaction,
                 child: Container(
@@ -556,7 +552,7 @@ class _LineItemCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          // Progress bar
+        
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
@@ -595,7 +591,7 @@ class _LineItemCard extends StatelessWidget {
   }
 }
 
-// ── Transaction tile ────────────────────────────────────────────────────────
+
 
 class _TransactionTile extends StatelessWidget {
   final BudgetTransaction tx;
@@ -630,7 +626,7 @@ class _TransactionTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Type indicator
+          
           Container(
             width: 36,
             height: 36,
@@ -647,7 +643,7 @@ class _TransactionTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          // Description + category
+         
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -668,7 +664,7 @@ class _TransactionTile extends StatelessWidget {
               ],
             ),
           ),
-          // Amount
+         
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -724,7 +720,7 @@ class _TransactionTile extends StatelessWidget {
   }
 }
 
-// ── Empty transactions ──────────────────────────────────────────────────────
+
 
 class _EmptyTransactions extends StatelessWidget {
   final VoidCallback onAdd;

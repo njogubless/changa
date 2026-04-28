@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 
-// ── Auth text field ───────────────────────────────────────────────────────────
 
 class AuthTextField extends StatefulWidget {
   final String label;
@@ -92,7 +91,7 @@ class _AuthTextFieldState extends State<AuthTextField> {
   }
 }
 
-// ── Auth header ───────────────────────────────────────────────────────────────
+
 
 class AuthHeader extends StatelessWidget {
   final String title;
@@ -109,7 +108,7 @@ class AuthHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Logo mark — small
+    
         Container(
           width: 48,
           height: 48,
@@ -156,7 +155,6 @@ class _MiniLogoPainter extends CustomPainter {
       paint,
     );
 
-    // Leaf dot
     canvas.drawCircle(
       Offset(size.width * 0.82, size.height * 0.78),
       3,
@@ -168,7 +166,7 @@ class _MiniLogoPainter extends CustomPainter {
   bool shouldRepaint(_) => false;
 }
 
-// ── Loading button ────────────────────────────────────────────────────────────
+
 
 class LoadingButton extends StatelessWidget {
   final VoidCallback? onPressed;
@@ -206,7 +204,7 @@ class LoadingButton extends StatelessWidget {
   }
 }
 
-// ── Error banner ──────────────────────────────────────────────────────────────
+
 
 class ErrorBanner extends StatelessWidget {
   final String message;

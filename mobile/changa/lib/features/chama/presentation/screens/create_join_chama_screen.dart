@@ -52,10 +52,8 @@ class _CreateChamaScreenState extends ConsumerState<CreateChamaScreen> {
       ref.read(chamaListProvider.notifier).addChama(chama);
       ref.read(createChamaProvider.notifier).reset();
 
-      // Navigate to chama detail first
       context.go('/chamas/${chama.id}');
 
-      // Then show the invite code sheet so they can share immediately
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) showInviteCodeSheet(context, chama);
       });
@@ -186,7 +184,6 @@ class _CreateChamaScreenState extends ConsumerState<CreateChamaScreen> {
   }
 }
 
-// ── Shared widgets ─────────────────────────────────────────────────────────
 class _Label extends StatelessWidget {
   final String text;
   const _Label(this.text);
@@ -229,9 +226,6 @@ class _ErrorBanner extends StatelessWidget {
       );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// JOIN CHAMA SCREEN
-// ══════════════════════════════════════════════════════════════════════════════
 
 class JoinChamaScreen extends ConsumerStatefulWidget {
   const JoinChamaScreen({super.key});

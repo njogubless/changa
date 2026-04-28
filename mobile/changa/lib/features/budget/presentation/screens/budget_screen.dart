@@ -21,7 +21,7 @@ class BudgetScreen extends ConsumerWidget {
         onRefresh: () => ref.read(budgetListProvider.notifier).refresh(),
         child: CustomScrollView(
           slivers: [
-            // ── Header ─────────────────────────────────────────────
+           
             SliverAppBar(
               expandedHeight: 130,
               floating: true,
@@ -54,13 +54,12 @@ class BudgetScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Summary cards ───────────────────────────────────────
             if (state.budgets.isNotEmpty)
               SliverToBoxAdapter(
                 child: _SummaryRow(budgets: state.budgets),
               ),
 
-            // ── Create button ───────────────────────────────────────
+            
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -92,7 +91,7 @@ class BudgetScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Body states ─────────────────────────────────────────
+           
             if (state.isLoading)
               const SliverFillRemaining(
                 child: Center(
@@ -142,7 +141,6 @@ class BudgetScreen extends ConsumerWidget {
   }
 }
 
-// ── Summary row ─────────────────────────────────────────────────────────────
 
 class _SummaryRow extends StatelessWidget {
   final List<BudgetModel> budgets;
@@ -189,7 +187,7 @@ class _SummaryRow extends StatelessWidget {
   }
 }
 
-// ── Budget card ──────────────────────────────────────────────────────────────
+
 
 class _BudgetCard extends StatelessWidget {
   final BudgetModel budget;
@@ -243,7 +241,7 @@ class _BudgetCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      // Type + chama chips inline
+                      
                       Row(
                         children: [
                           Text(

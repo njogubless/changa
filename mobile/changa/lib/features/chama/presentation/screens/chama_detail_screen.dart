@@ -58,7 +58,7 @@ class _ChamaDetailBody extends ConsumerWidget {
             () => ref.read(chamaProjectsProvider(chamaId).notifier).refresh(),
         child: CustomScrollView(
           slivers: [
-            // ── App bar ────────────────────────────────────────────────
+          
             SliverAppBar(
               expandedHeight: 180,
               pinned: true,
@@ -154,7 +154,7 @@ class _ChamaDetailBody extends ConsumerWidget {
               ),
             ),
 
-            // ── Projects header ────────────────────────────────────────
+           
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -182,7 +182,7 @@ class _ChamaDetailBody extends ConsumerWidget {
               ),
             ),
 
-            // ── Projects list ──────────────────────────────────────────
+          
             if (projectsState.isLoading)
               const SliverToBoxAdapter(
                 child: Center(

@@ -179,8 +179,7 @@ class _ChamaSettingsScreenState extends ConsumerState<ChamaSettingsScreen> {
     );
 
     if (confirmed != true || !mounted) return;
-    // TODO: wire to delete chama API
-    context.go('/home');
+       context.go('/home');
   }
 
   @override
@@ -227,7 +226,7 @@ class _ChamaSettingsScreenState extends ConsumerState<ChamaSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── General ────────────────────────────────────────────────
+            
             _SectionHeader('General'),
             const SizedBox(height: 8),
             _SettingsCard(items: [
@@ -264,7 +263,6 @@ class _ChamaSettingsScreenState extends ConsumerState<ChamaSettingsScreen> {
             ],
             const SizedBox(height: 20),
 
-            // ── Invite ─────────────────────────────────────────────────
             _SectionHeader('Invite'),
             const SizedBox(height: 8),
 
@@ -334,7 +332,7 @@ class _ChamaSettingsScreenState extends ConsumerState<ChamaSettingsScreen> {
             ),
             const SizedBox(height: 20),
 
-            // ── Members ────────────────────────────────────────────────
+            
             _SectionHeader('Members'),
             const SizedBox(height: 8),
             _SettingsCard(items: [
@@ -348,7 +346,7 @@ class _ChamaSettingsScreenState extends ConsumerState<ChamaSettingsScreen> {
             ]),
             const SizedBox(height: 20),
 
-            // ── Danger zone ────────────────────────────────────────────
+            
             _SectionHeader('Danger zone'),
             const SizedBox(height: 8),
             _DangerTile(
@@ -364,8 +362,6 @@ class _ChamaSettingsScreenState extends ConsumerState<ChamaSettingsScreen> {
     );
   }
 }
-
-// ── Sub-widgets ────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
   final String title;

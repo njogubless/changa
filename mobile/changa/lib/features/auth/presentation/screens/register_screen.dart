@@ -130,7 +130,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: 20),
                 ],
 
-                // Full name
+                
                 AuthTextField(
                   label: 'FULL NAME',
                   hint: 'Amina Wanjiru',
@@ -154,7 +154,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Email
+                
                 AuthTextField(
                   label: 'EMAIL',
                   hint: 'amina@example.com',
@@ -179,7 +179,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Phone — M-Pesa number
+                
                 AuthTextField(
                   label: 'M-PESA NUMBER',
                   hint: '254712345678',
@@ -210,7 +210,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // Password
+               
                 AuthTextField(
                   label: 'PASSWORD',
                   hint: '8+ characters with a number',
@@ -242,7 +242,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Submit
+               
                 LoadingButton(
                   onPressed: _hasConsented ? _submit : null,
                   isLoading: isLoading,
@@ -250,7 +250,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Sign in link
+                
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,

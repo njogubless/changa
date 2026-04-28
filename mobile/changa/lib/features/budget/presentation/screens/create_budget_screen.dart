@@ -13,8 +13,6 @@ import 'package:uuid/uuid.dart';
 
 const _uuid = Uuid();
 
-// ── Draft model ────────────────────────────────────────────────────────────
-
 class LineItemDraft {
   final BudgetCategory category;
   final double? amount;
@@ -47,7 +45,6 @@ class LineItemDraft {
       );
 }
 
-// ── Screen ──────────────────────────────────────────────────────────────────
 
 class CreateBudgetScreen extends ConsumerStatefulWidget {
   const CreateBudgetScreen({super.key});
@@ -288,7 +285,7 @@ class _CreateBudgetScreenState extends ConsumerState<CreateBudgetScreen> {
   }
 }
 
-// ── Type selector ────────────────────────────────────────────────────────────
+
 
 class _TypeSelector extends StatelessWidget {
   final BudgetType selected;
@@ -343,7 +340,7 @@ class _TypeSelector extends StatelessWidget {
       );
 }
 
-// ── Date picker ───────────────────────────────────────────────────────────────
+
 
 class _DatePicker extends StatelessWidget {
   final DateTime? date;
@@ -407,7 +404,7 @@ class _DatePicker extends StatelessWidget {
       );
 }
 
-// ── Chama linker ──────────────────────────────────────────────────────────────
+
 
 class _ChamaLinker extends StatelessWidget {
   final List<ChamaModel> chamas;
@@ -504,7 +501,7 @@ class _ChamaLinker extends StatelessWidget {
       );
 }
 
-// ── Allocation bar ────────────────────────────────────────────────────────────
+
 
 class _AllocationBar extends StatelessWidget {
   final double allocated;
@@ -545,7 +542,7 @@ class _AllocationBar extends StatelessWidget {
   }
 }
 
-// ── Empty categories ──────────────────────────────────────────────────────────
+
 
 class _EmptyCategories extends StatelessWidget {
   @override
@@ -567,7 +564,6 @@ class _EmptyCategories extends StatelessWidget {
       );
 }
 
-// ── Line item row ─────────────────────────────────────────────────────────────
 
 class _LineItemRow extends StatefulWidget {
   final LineItemDraft item;
@@ -629,7 +625,7 @@ class _LineItemRowState extends State<_LineItemRow> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Row 1: icon | dropdown | remove
+          
           Row(
             children: [
               Container(
@@ -667,7 +663,7 @@ class _LineItemRowState extends State<_LineItemRow> {
 
           const SizedBox(height: 10),
 
-          // Row 2: amount | custom name (if Other selected)
+          
           Row(
             children: [
               Expanded(
@@ -717,7 +713,7 @@ class _LineItemRowState extends State<_LineItemRow> {
   }
 }
 
-// ── Category dropdown ─────────────────────────────────────────────────────────
+
 
 class _CategoryDropdown extends StatelessWidget {
   final BudgetCategory value;
@@ -778,7 +774,7 @@ class _CategoryDropdown extends StatelessWidget {
       );
 }
 
-// ── Styled text field ─────────────────────────────────────────────────────────
+
 
 class _StyledField extends StatelessWidget {
   final TextEditingController controller;

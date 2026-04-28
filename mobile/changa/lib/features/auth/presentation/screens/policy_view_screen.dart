@@ -1,4 +1,4 @@
-// lib/features/legal/presentation/policy_viewer_screen.dart
+
 
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -49,8 +49,6 @@ class PolicyViewerScreen extends StatelessWidget {
   }
 }
 
-// Paste the full text of each document here as raw strings.
-// You can also load these from assets if you prefer.
 const _privacyPolicyText = '''
 PRIVACY POLICY
 Last updated: April 2025

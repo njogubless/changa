@@ -165,7 +165,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-// ── Onboarding page ───────────────────────────────────────────────────────────
+
 
 class _OnboardingPage extends StatelessWidget {
   final _OnboardingData data;
@@ -205,7 +205,7 @@ class _OnboardingPage extends StatelessWidget {
   }
 }
 
-// ── Illustrations ─────────────────────────────────────────────────────────────
+
 
 enum _IllustrationType { pool, payment, track }
 
@@ -432,7 +432,7 @@ class _IllustrationPainter extends CustomPainter {
   bool shouldRepaint(_) => false;
 }
 
-// ── Data class ────────────────────────────────────────────────────────────────
+
 
 class _OnboardingData {
   final String title;

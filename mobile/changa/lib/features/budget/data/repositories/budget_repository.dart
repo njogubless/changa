@@ -3,15 +3,14 @@ import 'dart:developer' as dev;
 import 'package:changa/core/network/api_client.dart';
 import 'package:changa/features/budget/data/models/budget_model.dart';
 
-// ── Logger ─────────────────────────────────────────────────────────────────────
-// Logs appear in `flutter run` terminal and VS Code Debug Console.
-// Filter in terminal:  flutter run 2>&1 | grep "\[Budget\]"
+
+
 
 void _log(String msg) => dev.log('  $msg', name: 'Budget');
 void _err(String msg, [Object? e, StackTrace? st]) =>
     dev.log(' $msg', name: 'Budget', error: e, stackTrace: st, level: 1000);
 
-// ── Type converters ────────────────────────────────────────────────────────────
+
 
 String _typeToApi(BudgetType t) {
   switch (t) {
@@ -52,8 +51,6 @@ BudgetCategory _catFromApi(String s) {
   }
 }
 
-// ── JSON → model ───────────────────────────────────────────────────────────────
-// Dio auto-decodes JSON so response.data is already a Map — no jsonDecode() needed.
 
 BudgetLineItem _lineItemFromMap(Map<String, dynamic> j) => BudgetLineItem(
       id: j['id'] as String,
@@ -72,7 +69,7 @@ BudgetTransaction _txFromMap(
       id: j['id'] as String,
       budgetId: budgetId,
       lineItemId: categoryId,
-      type: TransactionType.expense, // API only has expenses
+      type: TransactionType.expense,
       amount: (j['amount'] as num).toDouble(),
       description: j['description'] as String,
       date: DateTime.parse(j['date'] as String),
@@ -107,7 +104,7 @@ BudgetModel _budgetFromMap(Map<String, dynamic> j) {
   );
 }
 
-// ── Abstract interface ─────────────────────────────────────────────────────────
+  
 
 abstract class BudgetRepository {
   Future<List<BudgetModel>> getBudgets();
@@ -139,7 +136,7 @@ abstract class BudgetRepository {
   });
 }
 
-// ── API Repository ─────────────────────────────────────────────────────────────
+
 
 class ApiBudgetRepository implements BudgetRepository {
   final ApiClient _api;

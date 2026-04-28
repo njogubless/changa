@@ -54,7 +54,7 @@ class AppRoutes {
   static String paymentStatusPath(String ref, double amount) =>
       '/payment/status?ref=$ref&amount=$amount';
 
-  // Budget — NOTE: createBudget must have leading slash
+  // Budget 
   static const createBudget = '/budget/create';
   static const budgetDetail = '/budget/:id';
   static String budgetDetailPath(String id) => '/budget/$id';
@@ -108,7 +108,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const RegisterScreen(),
       ),
 
-      // ── Shell (bottom nav) ──────────────────────────────────────
+     
       ShellRoute(
         builder: (_, __, child) => ShellScreen(child: child),
         routes: [
@@ -127,13 +127,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // ── Profile ─────────────────────────────────────────────────
+  
       GoRoute(
         path: AppRoutes.profile,
         builder: (_, __) => const ProfileScreen(),
       ),
 
-      // ── Chama routes ─────────────────────────────────────────────
+   
       GoRoute(
         path: AppRoutes.createChama,
         builder: (_, __) => const CreateChamaScreen(),
@@ -149,7 +149,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ChamaDetailScreen(chamaId: state.pathParameters['id']!),
       ),
 
-      // ── Project routes ───────────────────────────────────────────
+      
       GoRoute(
         path: AppRoutes.createProject,
         builder:
@@ -169,19 +169,18 @@ final routerProvider = Provider<GoRouter>((ref) {
                 EditProjectScreen(project: state.extra as ProjectModel),
       ),
 
-      // ── Budget routes ─────────────────────────────────────────────
+  
       GoRoute(
-        path: AppRoutes.createBudget, // '/budget/create'
+        path: AppRoutes.createBudget,
         builder: (_, __) => const CreateBudgetScreen(),
       ),
       GoRoute(
-        path: AppRoutes.budgetDetail, // '/budget/:id'
+        path: AppRoutes.budgetDetail,
         builder:
             (_, state) =>
                 BudgetDetailScreen(budgetId: state.pathParameters['id']!),
       ),
 
-      // ── Payment routes ────────────────────────────────────────────
       GoRoute(
         path: AppRoutes.payment,
         builder:

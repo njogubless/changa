@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
-/// Shows the invite code bottom sheet.
-/// Call this after creating a chama or from the chama detail screen.
+
 void showInviteCodeSheet(BuildContext context, ChamaModel chama) {
   showModalBottomSheet(
     context: context,

@@ -15,14 +15,13 @@ class ChamasHomeScreen extends ConsumerWidget {
     final user = ref.watch(currentUserProvider);
     final firstName = user?.fullName.split(' ').first ?? '';
 
-    // No Scaffold here — ShellScreen's Scaffold owns the drawer.
-    // Scaffold.of(ctx) inside the Builder will correctly walk up to it.
+  
     return RefreshIndicator(
       color: AppColors.forest,
       onRefresh: () => ref.read(chamaListProvider.notifier).refresh(),
       child: CustomScrollView(
         slivers: [
-          // ── Header ──────────────────────────────────────────────
+        
           SliverAppBar(
             expandedHeight: 130,
             floating: true,
@@ -33,8 +32,7 @@ class ChamasHomeScreen extends ConsumerWidget {
             leading: Builder(
               builder: (ctx) => IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.cream),
-                // ctx is a descendant of ShellScreen's Scaffold, so
-                // Scaffold.of(ctx) correctly finds the one with the drawer.
+               
                 onPressed: () => Scaffold.of(ctx).openDrawer(),
               ),
             ),
@@ -67,7 +65,7 @@ class ChamasHomeScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Join / Create — always visible ───────────────────────
+          
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -93,7 +91,7 @@ class ChamasHomeScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Chama list / states ──────────────────────────────────
+        
           if (state.isLoading)
             const SliverFillRemaining(
               child: Center(
@@ -131,7 +129,7 @@ class ChamasHomeScreen extends ConsumerWidget {
   }
 }
 
-// ── Primary action buttons ─────────────────────────────────────────────────
+
 class _PrimaryAction extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -170,7 +168,6 @@ class _PrimaryAction extends StatelessWidget {
       );
 }
 
-// ── Chama card ─────────────────────────────────────────────────────────────
 class _ChamaCard extends StatelessWidget {
   final ChamaModel chama;
   const _ChamaCard({required this.chama});
@@ -284,7 +281,7 @@ class _Chip extends StatelessWidget {
       );
 }
 
-// ── Empty state ────────────────────────────────────────────────────────────
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -321,8 +318,6 @@ class _EmptyState extends StatelessWidget {
         ),
       );
 }
-
-// ── Error state ────────────────────────────────────────────────────────────
 class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
   const _ErrorState({required this.onRetry});

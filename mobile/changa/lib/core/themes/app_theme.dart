@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-// ── Colors ────────────────────────────────────────────────────────────────────
+
 
 class AppColors {
   AppColors._();
@@ -38,7 +38,6 @@ class AppColors {
   static const info = Color(0xFF1565C0);
 }
 
-// ── Spacing ───────────────────────────────────────────────────────────────────
 
 class AppSpacing {
   AppSpacing._();
@@ -63,7 +62,7 @@ class AppSpacing {
   );
 }
 
-// ── Radius ────────────────────────────────────────────────────────────────────
+
 
 class AppRadius {
   AppRadius._();
@@ -81,7 +80,7 @@ class AppRadius {
   static BorderRadius pillAll = BorderRadius.circular(pill);
 }
 
-// ── Text Styles ───────────────────────────────────────────────────────────────
+
 
 class AppTextStyles {
   AppTextStyles._();
@@ -159,8 +158,6 @@ class AppTextStyles {
     height: 1.4,
   );
 }
-
-// ── Theme ─────────────────────────────────────────────────────────────────────
 
 class AppTheme {
   AppTheme._();

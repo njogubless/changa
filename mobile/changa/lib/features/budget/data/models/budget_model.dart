@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-// ── Enums ──────────────────────────────────────────────────────────────────
+
 
 enum BudgetType { personal, event, chamaContribution }
 
 enum BudgetCategory {
-  // Personal
+  
   food,
   transport,
   rent,
@@ -15,7 +15,7 @@ enum BudgetCategory {
   entertainment,
   clothing,
   savings,
-  // Event
+  
   venue,
   catering,
   decoration,
@@ -23,15 +23,14 @@ enum BudgetCategory {
   music,
   transport_event,
   gifts,
-  // Chama
+
   contribution,
-  // Other
+  
   other,
 }
 
 enum TransactionType { income, expense }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 extension BudgetTypeX on BudgetType {
   String get label {
@@ -140,7 +139,7 @@ extension BudgetCategoryX on BudgetCategory {
   }
 }
 
-// ── Models ─────────────────────────────────────────────────────────────────
+
 
 class BudgetLineItem {
   final String id;

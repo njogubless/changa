@@ -7,7 +7,6 @@ final budgetRepositoryProvider = Provider<BudgetRepository>(
   (ref) => ApiBudgetRepository(ref.watch(apiClientProvider)),
 );
 
-// ── Budget list state ──────────────────────────────────────────────────────
 
 class BudgetListState {
   final List<BudgetModel> budgets;
@@ -61,7 +60,7 @@ final budgetListProvider =
       (ref) => BudgetListNotifier(ref.watch(budgetRepositoryProvider)),
     );
 
-// ── Single budget state ────────────────────────────────────────────────────
+
 
 class BudgetDetailState {
   final BudgetModel? budget;
@@ -141,7 +140,7 @@ final budgetDetailProvider = StateNotifierProvider.family<
   String
 >((ref, id) => BudgetDetailNotifier(ref.watch(budgetRepositoryProvider), id));
 
-// ── Create budget state ────────────────────────────────────────────────────
+
 
 class CreateBudgetState {
   final bool isLoading;

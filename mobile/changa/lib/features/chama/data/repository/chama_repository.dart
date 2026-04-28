@@ -7,7 +7,7 @@ class ChamaRepository {
   final ApiClient _api;
   ChamaRepository(this._api);
 
-  // ── Chamas ───────────────────────────────────────────────────────────────
+
 
   Future<ChamaListResponse> getMyChamas() async {
     final response = await _api.get('/chamas');
@@ -74,7 +74,7 @@ class ChamaRepository {
     return ChamaModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  // ── Projects inside chama ─────────────────────────────────────────────────
+
 
   Future<ProjectListResponse> getChamaProjects(
     String chamaId, {

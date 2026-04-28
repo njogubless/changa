@@ -28,7 +28,7 @@ class AppDrawer extends ConsumerWidget {
       child: SafeArea(
         child: Column(
           children: [
-            // ── User header ────────────────────────────────────────────
+            
             _DrawerHeader(
               initials: initials,
               userName: user?.fullName ?? '',
@@ -41,7 +41,7 @@ class AppDrawer extends ConsumerWidget {
 
             const SizedBox(height: 8),
 
-            // ── Menu ──────────────────────────────────────────────────
+           
             _DrawerItem(
               icon: Icons.person_outline,
               label: 'Profile',
@@ -91,7 +91,7 @@ class AppDrawer extends ConsumerWidget {
 
             const Spacer(),
 
-            // ── Logout ────────────────────────────────────────────────
+          
             _DrawerLogout(
               onTap: () {
                 Navigator.pop(context);
@@ -107,7 +107,7 @@ class AppDrawer extends ConsumerWidget {
   }
 }
 
-// ── Header ─────────────────────────────────────────────────────────────────
+
 class _DrawerHeader extends StatelessWidget {
   final String initials;
   final String userName;
@@ -176,7 +176,7 @@ class _DrawerHeader extends StatelessWidget {
   );
 }
 
-// ── Menu item ──────────────────────────────────────────────────────────────
+
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -208,7 +208,7 @@ class _DrawerItem extends StatelessWidget {
   );
 }
 
-// ── Logout button ──────────────────────────────────────────────────────────
+
 class _DrawerLogout extends StatelessWidget {
   final VoidCallback onTap;
   const _DrawerLogout({required this.onTap});

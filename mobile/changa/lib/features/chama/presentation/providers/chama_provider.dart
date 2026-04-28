@@ -5,13 +5,13 @@ import 'package:changa/features/chama/data/repository/chama_repository.dart';
 import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ── Repository provider ────────────────────────────────────────────────────
+
 
 final chamaRepositoryProvider = Provider<ChamaRepository>(
   (ref) => ChamaRepository(ref.watch(apiClientProvider)),
 );
 
-// ── Chama list state ───────────────────────────────────────────────────────
+
 
 class ChamaListState {
   final List<ChamaModel> chamas;
@@ -65,7 +65,7 @@ final chamaListProvider =
   (ref) => ChamaListNotifier(ref.watch(chamaRepositoryProvider)),
 );
 
-// ── Create chama state ─────────────────────────────────────────────────────
+
 
 class CreateChamaState {
   final bool isLoading;
@@ -110,7 +110,7 @@ final createChamaProvider =
   (ref) => CreateChamaNotifier(ref.watch(chamaRepositoryProvider)),
 );
 
-// ── Join chama state ───────────────────────────────────────────────────────
+
 
 class JoinChamaState {
   final bool isLoading;
@@ -160,7 +160,7 @@ final joinChamaProvider =
   (ref) => JoinChamaNotifier(ref.watch(chamaRepositoryProvider)),
 );
 
-// ── Chama projects state ───────────────────────────────────────────────────
+
 
 class ChamaProjectsState {
   final List<ProjectModel> projects;
@@ -213,7 +213,7 @@ final chamaProjectsProvider = StateNotifierProvider.family<
       ChamaProjectsNotifier(ref.watch(chamaRepositoryProvider), chamaId),
 );
 
-// ── Create project in chama ────────────────────────────────────────────────
+
 
 class CreateChamaProjectState {
   final bool isLoading;
