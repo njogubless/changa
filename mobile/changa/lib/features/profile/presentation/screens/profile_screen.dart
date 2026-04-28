@@ -30,7 +30,7 @@ class ProfileScreen extends ConsumerWidget {
       backgroundColor: AppColors.cream,
       body: CustomScrollView(
         slivers: [
-          // ── Hero header ────────────────────────────────────────────────
+          
           SliverAppBar(
             expandedHeight: 280,
             pinned: true,
@@ -41,10 +41,10 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
 
-          // ── Stats ──────────────────────────────────────────────────────
+         
           SliverToBoxAdapter(child: ProfileStatsRow(userId: user.id)),
 
-          // ── Menu sections ──────────────────────────────────────────────
+         
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),

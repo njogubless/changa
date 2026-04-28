@@ -5,7 +5,7 @@ import 'package:changa/features/projects/presentation/widgets/project_widgets.da
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Aggregates projects from all chamas the user belongs to
+
 final allChamaProjectsProvider = Provider<List<ProjectModel>>((ref) {
   final chamaState = ref.watch(chamaListProvider);
   final projects = <ProjectModel>[];
@@ -15,7 +15,7 @@ final allChamaProjectsProvider = Provider<List<ProjectModel>>((ref) {
     projects.addAll(chamaProjects.projects);
   }
 
-  // Sort by most recently created
+
   projects.sort((a, b) => b.createdAt.compareTo(a.createdAt));
   return projects;
 });
@@ -46,7 +46,7 @@ class AllProjectsScreen extends ConsumerWidget {
         },
         child: CustomScrollView(
           slivers: [
-            // ── Header ──────────────────────────────────────────────
+           
             SliverAppBar(
               expandedHeight: 100,
               floating: true,
@@ -75,7 +75,7 @@ class AllProjectsScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Count bar ────────────────────────────────────────────
+           
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -90,7 +90,7 @@ class AllProjectsScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── Content ──────────────────────────────────────────────
+           
             if (isLoading)
               const SliverToBoxAdapter(
                 child: Center(

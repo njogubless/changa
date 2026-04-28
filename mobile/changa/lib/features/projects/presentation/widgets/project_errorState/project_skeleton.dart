@@ -1,9 +1,7 @@
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:flutter/material.dart';
 
-// ── Fix: use ListView instead of Column inside SliverFillRemaining
-// Column overflows because it tries to lay out all children at once
-// without knowing the available height constraint.
+
 class ProjectsLoadingSkeleton extends StatelessWidget {
   const ProjectsLoadingSkeleton({super.key});
 

@@ -82,7 +82,7 @@ Future<void> _navigate() async {
   if (_navigated || !mounted) return;
 
   int attempts = 0;
-  const maxAttempts = 15; // 6 seconds max wait
+  const maxAttempts = 15;
 
   while (attempts < maxAttempts) {
     if (!mounted) return;
@@ -103,12 +103,12 @@ Future<void> _navigate() async {
       return;
     }
 
-    // Still AuthInitial or AuthLoading — wait and retry
+   
     attempts++;
     await Future.delayed(const Duration(milliseconds: 400));
   }
 
-  // Fallback — give up and go to onboarding
+
   if (!mounted) return;
   _navigated = true;
   context.go(AppRoutes.onboarding);

@@ -112,7 +112,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
                 const SizedBox(height: 16),
               ],
 
-              // ── Project details ──────────────────────────────────────
+             
               const ProjectSectionLabel('Project title'),
               const SizedBox(height: 8),
               TextFormField(
@@ -161,7 +161,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ── Payment account ──────────────────────────────────────
+             
               const ProjectSectionLabel('Payment account'),
               const SizedBox(height: 4),
               Text(
@@ -170,7 +170,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Payment type selector
+              
               Row(
                 children: [
                   _PaymentTypeChip(
@@ -194,7 +194,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Payment number
+             
               TextFormField(
                 controller: _paymentNumberCtrl,
                 keyboardType: TextInputType.number,
@@ -226,7 +226,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Account name (manually entered for now)
+              
               TextFormField(
                 controller: _paymentNameCtrl,
                 textCapitalization: TextCapitalization.words,
@@ -243,7 +243,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
                 style: AppTextStyles.caption.copyWith(color: AppColors.green),
               ),
 
-              // Account reference (paybill only)
+             
               if (_paymentType == 'paybill') ...[
                 const SizedBox(height: 12),
                 TextFormField(
@@ -258,7 +258,7 @@ class _CreateProjectScreenState extends ConsumerState<CreateProjectScreen> {
               ],
               const SizedBox(height: 24),
 
-              // ── Settings ─────────────────────────────────────────────
+             
               ProjectToggleRow(
                 title: 'Anonymous contributions',
                 subtitle: 'Contributor names hidden from each other',

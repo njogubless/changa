@@ -2,7 +2,7 @@ import 'package:changa/core/themes/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// ── Section header ─────────────────────────────────────────────────────────
+
 
 class ProfileSectionHeader extends StatelessWidget {
   final String title;
@@ -19,7 +19,6 @@ class ProfileSectionHeader extends StatelessWidget {
       );
 }
 
-// ── Menu card — wraps a list of tiles in a rounded card ────────────────────
 
 class ProfileMenuCard extends StatelessWidget {
   final List<ProfileMenuTileData> items;
@@ -58,7 +57,7 @@ class ProfileMenuCard extends StatelessWidget {
   }
 }
 
-// ── Tile data ──────────────────────────────────────────────────────────────
+
 
 class ProfileMenuTileData {
   final IconData icon;
@@ -76,7 +75,6 @@ class ProfileMenuTileData {
   });
 }
 
-// ── Single tile ────────────────────────────────────────────────────────────
 
 class _ProfileMenuTile extends StatelessWidget {
   final ProfileMenuTileData data;
@@ -120,7 +118,7 @@ class _ProfileMenuTile extends StatelessWidget {
   }
 }
 
-// ── Logout button ──────────────────────────────────────────────────────────
+
 
 class ProfileLogoutButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -160,7 +158,7 @@ class ProfileLogoutButton extends StatelessWidget {
   }
 }
 
-// ── Bottom sheet handle ────────────────────────────────────────────────────
+
 
 class BottomSheetHandle extends StatelessWidget {
   const BottomSheetHandle({super.key});
@@ -178,7 +176,7 @@ class BottomSheetHandle extends StatelessWidget {
       );
 }
 
-// ── Shared helper ──────────────────────────────────────────────────────────
+
 
 SnackBar buildSnackBar(String message, {bool isError = false}) => SnackBar(
       content: Text(message),

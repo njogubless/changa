@@ -55,10 +55,10 @@ class ProjectsRepository {
   String id, {
   String? title,
   String? description,
-  double? targetAmount,       // ← add
-  String? visibility,         // ← add
-  bool? isAnonymous,          // ← add
-  DateTime? deadline,         // ← add
+  double? targetAmount,       
+  String? visibility,         
+  bool? isAnonymous,          
+  DateTime? deadline,         
   String? status,
 }) async {
   final response = await _api.put(

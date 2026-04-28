@@ -1,7 +1,7 @@
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:flutter/material.dart';
 
-// ── Count bar ──────────────────────────────────────────────────────────────
+
 class ProjectsCountBar extends StatelessWidget {
   final int count;
   final bool isLoading;
@@ -48,7 +48,7 @@ class ProjectsCountBar extends StatelessWidget {
   }
 }
 
-// ── Error state ────────────────────────────────────────────────────────────
+
 class ProjectsErrorState extends StatelessWidget {
   final VoidCallback onRetry;
   const ProjectsErrorState({super.key, required this.onRetry});

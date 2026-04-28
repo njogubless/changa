@@ -182,7 +182,7 @@ class _PendingView extends StatelessWidget {
   }
 }
 
-// ── Success view ──────────────────────────────────────────────────────────────
+
 
 class _SuccessView extends StatelessWidget {
   final double amount;
@@ -291,7 +291,7 @@ class _SuccessView extends StatelessWidget {
   }
 }
 
-// ── Failed view ───────────────────────────────────────────────────────────────
+
 
 class _FailedView extends StatelessWidget {
   final String reason;
@@ -369,7 +369,7 @@ class _FailedView extends StatelessWidget {
   }
 }
 
-// ── Receipt row ───────────────────────────────────────────────────────────────
+
 
 class _ReceiptRow extends StatelessWidget {
   final String label;
@@ -399,7 +399,7 @@ class _ReceiptRow extends StatelessWidget {
   }
 }
 
-// ── Polling dots ──────────────────────────────────────────────────────────────
+
 
 class _PollingDots extends StatefulWidget {
   @override
@@ -452,7 +452,7 @@ class _PollingDotsState extends State<_PollingDots>
   }
 }
 
-// ── Fallback loader (if Lottie fails) ─────────────────────────────────────────
+
 
 class _FallbackLoader extends StatelessWidget {
   @override

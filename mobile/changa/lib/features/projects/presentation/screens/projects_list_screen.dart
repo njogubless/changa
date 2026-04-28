@@ -72,14 +72,12 @@ class _ProjectsListScreenState extends ConsumerState<ProjectsListScreen> {
         child: CustomScrollView(
           controller: _scrollCtrl,
           slivers: [
-            // App bar with greeting
             ProjectsAppBar(
               firstName: firstName,
               showSearch: _showSearch,
               onToggleSearch: _toggleSearch,
             ),
 
-            // Search bar — visible when toggled
             if (_showSearch)
               ProjectsSearchBar(
                 controller: _searchCtrl,
@@ -92,7 +90,6 @@ class _ProjectsListScreenState extends ConsumerState<ProjectsListScreen> {
                 },
               ),
 
-            // Count + clear search
             ProjectsCountBar(
               count: state.projects.length,
               isLoading: state.isLoading,
@@ -102,7 +99,7 @@ class _ProjectsListScreenState extends ConsumerState<ProjectsListScreen> {
 
             // Content states
             if (state.isLoading)
-              const ProjectsLoadingSkeleton() // ← SliverList, no overflow
+              const ProjectsLoadingSkeleton() 
             else if (state.error != null)
               SliverFillRemaining(
                 child: ProjectsErrorState(

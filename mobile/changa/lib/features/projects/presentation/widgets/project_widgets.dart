@@ -24,7 +24,7 @@ class ProjectCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover image or placeholder
+            
             _CoverImage(url: project.coverImageUrl, title: project.title),
 
             Padding(
@@ -32,7 +32,7 @@ class ProjectCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title + visibility badge
+                  
                   Row(
                     children: [
                       Expanded(
@@ -45,8 +45,7 @@ class ProjectCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      // if (project.visibility == ProjectVisibility.private)
-                      //   _Badge(label: 'Private', color: AppColors.gold),
+                     
                     ],
                   ),
                   if (project.description != null) ...[
@@ -135,7 +134,7 @@ class _CoverImage extends StatelessWidget {
   }
 
   Widget _placeholder() {
-    // Generate a consistent color from title
+   
     final colors = [
       AppColors.forest,
       AppColors.green,
