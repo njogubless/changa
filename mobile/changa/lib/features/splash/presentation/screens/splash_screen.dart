@@ -78,26 +78,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 1700));
     _navigate();
   }
-Future<void> _navigate() async {
-  if(_navigated || !mounted) return;
 
-  final authState = ref.read(authNotifierProvider);
+  Future<void> _navigate() async {
+    if (_navigated || !mounted) return;
 
-  if(authState is AuthAuthenticated){
-    _navigated = true;
-    context.go(AppRoutes.home);
+    final authState = ref.read(authNotifierProvider);
+
+    if (authState is AuthAuthenticated) {
+      _navigated = true;
+      context.go(AppRoutes.home);
+    } else if (authState is AuthUnauthenticated) {
+      _navigated = true;
+
+      final prefs = await SharedPreferences.getInstance();
+      final done = prefs.getBool('Onboarding_done') ?? false;
+
+      if (!mounted) return;
+      context.go(done ? AppRoutes.login : AppRoutes.onboarding);
+    }
   }
- else if(authState is AuthUnauthenticated){
-  _navigated = true;
-
-  final prefs = await SharedPreferences.getInstance();
-  final done = prefs.getBool('Onboarding_done') ?? false;
-
-  if(!mounted)return;
-  context.go(done ? AppRoutes.login : AppRoutes.onboarding);
- }
-
-}
   // Future<void> _navigate() async {
   //   if (_navigated || !mounted) return;
 
@@ -130,7 +129,6 @@ Future<void> _navigate() async {
   //   if (!mounted) return;
   //   _navigated = true;
   //   context.go(AppRoutes.onboarding);
-  
 
   @override
   void dispose() {
@@ -142,11 +140,11 @@ Future<void> _navigate() async {
 
   @override
   Widget build(BuildContext context) {
-  ref.listen(authNotifierProvider,(pevious, next){
-    if(next is AuthAuthenticated || next is AuthUnauthenticated){
-      _navigate();
-    }
-  });
+    ref.listen(authNotifierProvider, (pevious, next) {
+      if (next is AuthAuthenticated || next is AuthUnauthenticated) {
+        _navigate();
+      }
+    });
 
     return Scaffold(
       backgroundColor: AppColors.forest,
@@ -331,11 +329,21 @@ class _LoadingDots extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(3, (i) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Opacity(
-            opacity: controller.value,
-            child: const DecoratedBox(
+        return AnimatedBuilder(
+          animation: controller,
+          builder: (context, child) {
+            final t = ((controller.value + i * 0.33) % 1.0);
+            final opacity = (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.25, 1.0);
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Opacity(opacity: opacity, child: child),
+            );
+          },
+          child: const SizedBox(
+            width: 6,
+            height: 6,
+            child: DecoratedBox(
               decoration: BoxDecoration(
                 color: AppColors.mint,
                 shape: BoxShape.circle,
