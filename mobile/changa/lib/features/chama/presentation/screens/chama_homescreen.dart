@@ -12,8 +12,8 @@ class ChamasHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(chamaListProvider);
-    final user = ref.watch(currentUserProvider);
-    final firstName = user?.fullName.split(' ').first ?? '';
+    //final user = ref.watch(currentUserProvider);
+    final firstName = ref.watch(currentUserProvider.select((user) => user?.fullName.split(' ').first)) ?? '';
 
   
     return RefreshIndicator(
