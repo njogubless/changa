@@ -56,9 +56,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
-    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
-    );
+    _textOpacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _textController, curve: Curves.easeIn));
     _textSlide = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -78,41 +79,39 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     _navigate();
   }
 
-Future<void> _navigate() async {
-  if (_navigated || !mounted) return;
+  Future<void> _navigate() async {
+    if (_navigated || !mounted) return;
 
-  int attempts = 0;
-  const maxAttempts = 15;
+    int attempts = 0;
+    const maxAttempts = 15;
 
-  while (attempts < maxAttempts) {
-    if (!mounted) return;
-    final authState = ref.read(authNotifierProvider);
-
-    if (authState is AuthAuthenticated) {
-      _navigated = true;
-      context.go(AppRoutes.home);
-      return;
-    }
-
-    if (authState is AuthUnauthenticated) {
-      _navigated = true;
-      final prefs = await SharedPreferences.getInstance();
-      final done = prefs.getBool('onboarding_done') ?? false;
+    while (attempts < maxAttempts) {
       if (!mounted) return;
-      context.go(done ? AppRoutes.login : AppRoutes.onboarding);
-      return;
+      final authState = ref.read(authNotifierProvider);
+
+      if (authState is AuthAuthenticated) {
+        _navigated = true;
+        context.go(AppRoutes.home);
+        return;
+      }
+
+      if (authState is AuthUnauthenticated) {
+        _navigated = true;
+        final prefs = await SharedPreferences.getInstance();
+        final done = prefs.getBool('onboarding_done') ?? false;
+        if (!mounted) return;
+        context.go(done ? AppRoutes.login : AppRoutes.onboarding);
+        return;
+      }
+
+      attempts++;
+      await Future.delayed(const Duration(milliseconds: 400));
     }
 
-   
-    attempts++;
-    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+    _navigated = true;
+    context.go(AppRoutes.onboarding);
   }
-
-
-  if (!mounted) return;
-  _navigated = true;
-  context.go(AppRoutes.onboarding);
-}
 
   @override
   void dispose() {
@@ -142,13 +141,14 @@ Future<void> _navigate() async {
                 AnimatedBuilder(
                   animation: _logoController,
                   child: _LogoMark(),
-                  builder: (context, child) => Opacity(
-                    opacity: _logoOpacity.value,
-                    child: Transform.scale(
-                      scale: _logoScale.value,
-                      child: child,           
-                    ),
-                  ),
+                  builder:
+                      (context, child) => Opacity(
+                        opacity: _logoOpacity.value,
+                        child: Transform.scale(
+                          scale: _logoScale.value,
+                          child: child,
+                        ),
+                      ),
                 ),
                 const SizedBox(height: 24),
                 SlideTransition(
@@ -211,10 +211,7 @@ class _LogoMark extends StatelessWidget {
         ),
       ),
       child: Center(
-        child: CustomPaint(
-          size: const Size(54, 54),
-          painter: _LogoPainter(),
-        ),
+        child: CustomPaint(size: const Size(54, 54), painter: _LogoPainter()),
       ),
     );
   }
@@ -223,19 +220,22 @@ class _LogoMark extends StatelessWidget {
 class _LogoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final arcPaint = Paint()
-      ..color = AppColors.cream
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5.5
-      ..strokeCap = StrokeCap.round;
+    final arcPaint =
+        Paint()
+          ..color = AppColors.cream
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5.5
+          ..strokeCap = StrokeCap.round;
 
-    final leafPaint = Paint()
-      ..color = AppColors.sage
-      ..style = PaintingStyle.fill;
+    final leafPaint =
+        Paint()
+          ..color = AppColors.sage
+          ..style = PaintingStyle.fill;
 
-    final accentPaint = Paint()
-      ..color = AppColors.mint
-      ..style = PaintingStyle.fill;
+    final accentPaint =
+        Paint()
+          ..color = AppColors.mint
+          ..style = PaintingStyle.fill;
 
     final cx = size.width * 0.52;
     final cy = size.height * 0.48;
@@ -280,9 +280,7 @@ class _LogoPainter extends CustomPainter {
 class _GeometricBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: CustomPaint(painter: _GeoBgPainter()),
-    );
+    return SizedBox.expand(child: CustomPaint(painter: _GeoBgPainter()));
   }
 }
 
@@ -312,21 +310,17 @@ class _LoadingDots extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(3, (i) {
-        return AnimatedBuilder(
-          animation: controller,
-          builder: (_, __) {
-            final t = ((controller.value + i * 0.33) % 1.0);
-            final opacity = (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.25, 1.0);
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: 6,
-              height: 6,
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Opacity(
+            opacity: controller.value,
+            child: const DecoratedBox(
               decoration: BoxDecoration(
-                color: AppColors.mint.withValues(alpha: opacity),
+                color: AppColors.mint,
                 shape: BoxShape.circle,
               ),
-            );
-          },
+            ),
+          ),
         );
       }),
     );
