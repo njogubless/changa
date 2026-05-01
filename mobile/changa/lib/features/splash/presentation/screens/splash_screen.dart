@@ -280,7 +280,9 @@ class _LogoPainter extends CustomPainter {
 class _GeometricBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(child: CustomPaint(painter: _GeoBgPainter()));
+    return RepaintBoundary(
+      child: SizedBox.expand(child: CustomPaint(painter: _GeoBgPainter())),
+    );
   }
 }
 
