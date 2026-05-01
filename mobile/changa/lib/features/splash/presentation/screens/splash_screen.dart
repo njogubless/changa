@@ -141,11 +141,12 @@ Future<void> _navigate() async {
               children: [
                 AnimatedBuilder(
                   animation: _logoController,
-                  builder: (_, __) => Opacity(
+                  child: _LogoMark(),
+                  builder: (context, child) => Opacity(
                     opacity: _logoOpacity.value,
                     child: Transform.scale(
                       scale: _logoScale.value,
-                      child: _LogoMark(),
+                      child: child,           
                     ),
                   ),
                 ),
