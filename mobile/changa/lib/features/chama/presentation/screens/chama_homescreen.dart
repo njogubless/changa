@@ -1,3 +1,4 @@
+// chama_homescreen.dart
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/chama/data/models/chama_model.dart';
@@ -12,16 +13,17 @@ class ChamasHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(chamaListProvider);
-    //final user = ref.watch(currentUserProvider);
-    final firstName = ref.watch(currentUserProvider.select((user) => user?.fullName.split(' ').first)) ?? '';
+    // .select() means this widget only rebuilds when firstName changes,
+    // not on any other user field change
+    final firstName = ref.watch(
+      currentUserProvider.select((u) => u?.fullName.split(' ').first ?? ''),
+    );
 
-  
     return RefreshIndicator(
       color: AppColors.forest,
       onRefresh: () => ref.read(chamaListProvider.notifier).refresh(),
       child: CustomScrollView(
         slivers: [
-        
           SliverAppBar(
             expandedHeight: 130,
             floating: true,
@@ -32,40 +34,18 @@ class ChamasHomeScreen extends ConsumerWidget {
             leading: Builder(
               builder: (ctx) => IconButton(
                 icon: const Icon(Icons.menu, color: AppColors.cream),
-               
                 onPressed: () => Scaffold.of(ctx).openDrawer(),
               ),
             ),
             flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                color: AppColors.forest,
-                padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      firstName.isNotEmpty
-                          ? 'Habari, $firstName 👋'
-                          : 'Habari 👋',
-                      style: AppTextStyles.bodySmall
-                          .copyWith(color: AppColors.mint),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Your Chamas',
-                      style: AppTextStyles.h2.copyWith(
-                        color: AppColors.cream,
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
+              // RepaintBoundary isolates the greeting text repaint
+              // from the rest of the app bar
+              background: RepaintBoundary(
+                child: _AppBarBackground(firstName: firstName),
               ),
             ),
           ),
 
-          
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -91,7 +71,6 @@ class ChamasHomeScreen extends ConsumerWidget {
             ),
           ),
 
-        
           if (state.isLoading)
             const SliverFillRemaining(
               child: Center(
@@ -104,8 +83,7 @@ class ChamasHomeScreen extends ConsumerWidget {
           else if (state.error != null)
             SliverFillRemaining(
               child: _ErrorState(
-                onRetry: () =>
-                    ref.read(chamaListProvider.notifier).refresh(),
+                onRetry: () => ref.read(chamaListProvider.notifier).refresh(),
               ),
             )
           else if (state.chamas.isEmpty)
@@ -129,6 +107,35 @@ class ChamasHomeScreen extends ConsumerWidget {
   }
 }
 
+// Extracted so the app bar background is its own widget —
+// Flutter can skip rebuilding it when unrelated state changes
+class _AppBarBackground extends StatelessWidget {
+  final String firstName;
+  const _AppBarBackground({required this.firstName});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.forest,
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Text(
+            firstName.isNotEmpty ? 'Habari, $firstName 👋' : 'Habari 👋',
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.mint),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Your Chamas',
+            style: AppTextStyles.h2.copyWith(color: AppColors.cream, height: 1.2),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _PrimaryAction extends StatelessWidget {
   final IconData icon;
@@ -142,37 +149,62 @@ class _PrimaryAction extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: AppColors.forest,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: AppColors.cream, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.cream,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.forest,
+          borderRadius: BorderRadius.circular(14),
         ),
-      );
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: AppColors.cream, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.cream,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ChamaCard extends StatelessWidget {
   final ChamaModel chama;
-  const _ChamaCard({required this.chama});
 
-  Color _parseColor(String hex) {
+  // Pre-computed at construction time, not on every build
+  final Color _color;
+  final String _initials;
+  final List<BoxShadow> _shadow;
+
+  _ChamaCard({required this.chama})
+      : _color = _parseColor(chama.avatarColor),
+        _initials = chama.name
+            .trim()
+            .split(' ')
+            .where((e) => e.isNotEmpty)
+            .take(2)
+            .map((e) => e[0].toUpperCase())
+            .join(),
+        _shadow = const [
+          BoxShadow(
+            // withValues can't be const, so we hardcode the resolved alpha:
+            // forest=#1B4332 at 0.06 alpha ≈ Color(0x0F1B4332)
+            color: Color(0x0F1B4332),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ];
+
+  static Color _parseColor(String hex) {
     try {
       return Color(int.parse(hex.replaceFirst('#', '0xFF')));
     } catch (_) {
@@ -182,15 +214,6 @@ class _ChamaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _parseColor(chama.avatarColor);
-    final initials = chama.name
-        .trim()
-        .split(' ')
-        .where((e) => e.isNotEmpty)
-        .take(2)
-        .map((e) => e[0].toUpperCase())
-        .join();
-
     return GestureDetector(
       onTap: () => context.push('/chamas/${chama.id}'),
       child: Container(
@@ -198,13 +221,7 @@ class _ChamaCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.forest.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: _shadow, // reused, not recreated
         ),
         child: Row(
           children: [
@@ -212,12 +229,12 @@ class _ChamaCard extends StatelessWidget {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: color,
+                color: _color,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Center(
                 child: Text(
-                  initials,
+                  _initials,
                   style: AppTextStyles.h3.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
@@ -255,8 +272,7 @@ class _ChamaCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right,
-                color: AppColors.sand, size: 20),
+            const Icon(Icons.chevron_right, color: AppColors.sand, size: 20),
           ],
         ),
       ),
@@ -270,79 +286,79 @@ class _Chip extends StatelessWidget {
   const _Chip({required this.icon, required this.label});
 
   @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Icon(icon, size: 12, color: AppColors.green),
-          const SizedBox(width: 3),
-          Text(label,
-              style:
-                  AppTextStyles.caption.copyWith(color: AppColors.green)),
-        ],
-      );
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 12, color: AppColors.green),
+        const SizedBox(width: 3),
+        Text(label, style: AppTextStyles.caption.copyWith(color: AppColors.green)),
+      ],
+    );
+  }
 }
-
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.sage.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.people_outline,
-                    color: AppColors.forest, size: 36),
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.sage.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 20),
-              Text('No Chamas yet',
-                  style:
-                      AppTextStyles.h3.copyWith(color: AppColors.forest)),
-              const SizedBox(height: 8),
-              Text(
-                'Use the buttons above to create\nor join a Chama.',
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: AppColors.green),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+              child: const Icon(Icons.people_outline,
+                  color: AppColors.forest, size: 36),
+            ),
+            const SizedBox(height: 20),
+            Text('No Chamas yet',
+                style: AppTextStyles.h3.copyWith(color: AppColors.forest)),
+            const SizedBox(height: 8),
+            Text(
+              'Use the buttons above to create\nor join a Chama.',
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.green),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
+
 class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
   const _ErrorState({required this.onRetry});
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off_outlined,
-                  color: AppColors.sand, size: 48),
-              const SizedBox(height: 16),
-              Text('Could not load Chamas',
-                  style:
-                      AppTextStyles.h4.copyWith(color: AppColors.forest)),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('Try again'),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.wifi_off_outlined, color: AppColors.sand, size: 48),
+            const SizedBox(height: 16),
+            Text('Could not load Chamas',
+                style: AppTextStyles.h4.copyWith(color: AppColors.forest)),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Try again'),
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
