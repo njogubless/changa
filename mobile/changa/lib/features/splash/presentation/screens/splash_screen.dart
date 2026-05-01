@@ -25,12 +25,31 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   late Animation<Offset> _textSlide;
 
   bool _navigated = false;
+  ProviderSubscription<AuthState>? _authSub; // ← nullable, safe to dispose
 
   @override
   void initState() {
     super.initState();
     _setupAnimations();
+    _setupAuthListener();
     _startSequence();
+  }
+
+  void _setupAuthListener() {
+    // addPostFrameCallback ensures ref is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _authSub = ref.listenManual<AuthState>(
+        authNotifierProvider,
+        (previous, next) {
+          if (next is AuthAuthenticated ||
+              next is AuthUnauthenticated ||
+              next is AuthError) {
+            _navigate();
+          }
+        },
+      );
+    });
   }
 
   void _setupAnimations() {
@@ -56,10 +75,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
-    _textOpacity = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _textController, curve: Curves.easeIn));
+    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
+    );
     _textSlide = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -72,14 +90,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 200));
     if (!mounted) return;
     _logoController.forward();
+
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     _textController.forward();
+
+    // Wait long enough for auth to resolve in most cases
     await Future.delayed(const Duration(milliseconds: 1700));
+    if (!mounted) return;
+
+    // Timer expired — try to navigate now.
+    // If auth is still loading, the listener will handle it when it resolves.
     _navigate();
   }
 
   Future<void> _navigate() async {
+    // Guard: only navigate once, and only when mounted
     if (_navigated || !mounted) return;
 
     final authState = ref.read(authNotifierProvider);
@@ -87,51 +113,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (authState is AuthAuthenticated) {
       _navigated = true;
       context.go(AppRoutes.home);
-    } else if (authState is AuthUnauthenticated) {
+      return;
+    }
+
+    if (authState is AuthUnauthenticated || authState is AuthError) {
       _navigated = true;
-
       final prefs = await SharedPreferences.getInstance();
-      final done = prefs.getBool('Onboarding_done') ?? false;
-
+      final done = prefs.getBool('onboarding_done') ?? false;
+      debugPrint('>>> onboarding_done: $done');
       if (!mounted) return;
       context.go(done ? AppRoutes.login : AppRoutes.onboarding);
+      return;
     }
+
+    // AuthInitial or AuthLoading — do nothing, listener will fire
   }
-  // Future<void> _navigate() async {
-  //   if (_navigated || !mounted) return;
-
-  //   int attempts = 0;
-  //   const maxAttempts = 15;
-
-  //   while (attempts < maxAttempts) {
-  //     if (!mounted) return;
-  //     final authState = ref.read(authNotifierProvider);
-
-  //     if (authState is AuthAuthenticated) {
-  //       _navigated = true;
-  //       context.go(AppRoutes.home);
-  //       return;
-  //     }
-
-  //     if (authState is AuthUnauthenticated) {
-  //       _navigated = true;
-  //       final prefs = await SharedPreferences.getInstance();
-  //       final done = prefs.getBool('onboarding_done') ?? false;
-  //       if (!mounted) return;
-  //       context.go(done ? AppRoutes.login : AppRoutes.onboarding);
-  //       return;
-  //     }
-
-  //     attempts++;
-  //     await Future.delayed(const Duration(milliseconds: 400));
-  //   }
-
-  //   if (!mounted) return;
-  //   _navigated = true;
-  //   context.go(AppRoutes.onboarding);
 
   @override
   void dispose() {
+    _authSub?.close(); // ← safe null-aware close
     _logoController.dispose();
     _textController.dispose();
     _dotsController.dispose();
@@ -140,32 +140,26 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(authNotifierProvider, (pevious, next) {
-      if (next is AuthAuthenticated || next is AuthUnauthenticated) {
-        _navigate();
-      }
-    });
-
+    // NO ref.listen here — handled entirely by listenManual in initState
     return Scaffold(
       backgroundColor: AppColors.forest,
       body: Stack(
         children: [
-          _GeometricBackground(),
+          const _GeometricBackground(),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 AnimatedBuilder(
                   animation: _logoController,
-                  child: _LogoMark(),
-                  builder:
-                      (context, child) => Opacity(
-                        opacity: _logoOpacity.value,
-                        child: Transform.scale(
-                          scale: _logoScale.value,
-                          child: child,
-                        ),
-                      ),
+                  child: const _LogoMark(),
+                  builder: (context, child) => Opacity(
+                    opacity: _logoOpacity.value,
+                    child: Transform.scale(
+                      scale: _logoScale.value,
+                      child: child,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 SlideTransition(
@@ -214,6 +208,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 }
 
 class _LogoMark extends StatelessWidget {
+  const _LogoMark();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -227,38 +223,36 @@ class _LogoMark extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Center(
-        child: CustomPaint(size: const Size(54, 54), painter: _LogoPainter()),
+      child: const Center(
+        child: CustomPaint(size: Size(54, 54), painter: _LogoPainter()),
       ),
     );
   }
 }
 
 class _LogoPainter extends CustomPainter {
+  const _LogoPainter();
+
   @override
   void paint(Canvas canvas, Size size) {
-    final arcPaint =
-        Paint()
-          ..color = AppColors.cream
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 5.5
-          ..strokeCap = StrokeCap.round;
+    final arcPaint = Paint()
+      ..color = AppColors.cream
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 5.5
+      ..strokeCap = StrokeCap.round;
 
-    final leafPaint =
-        Paint()
-          ..color = AppColors.sage
-          ..style = PaintingStyle.fill;
+    final leafPaint = Paint()
+      ..color = AppColors.sage
+      ..style = PaintingStyle.fill;
 
-    final accentPaint =
-        Paint()
-          ..color = AppColors.mint
-          ..style = PaintingStyle.fill;
+    final accentPaint = Paint()
+      ..color = AppColors.mint
+      ..style = PaintingStyle.fill;
 
     final cx = size.width * 0.52;
     final cy = size.height * 0.48;
     final r = size.width * 0.35;
 
-    // C arc — open on right
     canvas.drawArc(
       Rect.fromCircle(center: Offset(cx, cy), radius: r),
       0.55,
@@ -267,7 +261,6 @@ class _LogoPainter extends CustomPainter {
       arcPaint,
     );
 
-    // Bottom leaf
     final bx = cx + r * 0.82;
     final by = cy + r * 0.82;
     canvas.drawPath(
@@ -278,7 +271,6 @@ class _LogoPainter extends CustomPainter {
       leafPaint,
     );
 
-    // Top accent
     final tx = cx + r * 0.82;
     final ty = cy - r * 0.82;
     canvas.drawPath(
@@ -295,6 +287,8 @@ class _LogoPainter extends CustomPainter {
 }
 
 class _GeometricBackground extends StatelessWidget {
+  const _GeometricBackground();
+
   @override
   Widget build(BuildContext context) {
     return RepaintBoundary(
@@ -334,7 +328,6 @@ class _LoadingDots extends StatelessWidget {
           builder: (context, child) {
             final t = ((controller.value + i * 0.33) % 1.0);
             final opacity = (t < 0.5 ? t * 2 : (1 - t) * 2).clamp(0.25, 1.0);
-
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Opacity(opacity: opacity, child: child),
