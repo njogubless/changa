@@ -78,40 +78,59 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     await Future.delayed(const Duration(milliseconds: 1700));
     _navigate();
   }
+Future<void> _navigate() async {
+  if(_navigated || !mounted) return;
 
-  Future<void> _navigate() async {
-    if (_navigated || !mounted) return;
+  final authState = ref.read(authNotifierProvider);
 
-    int attempts = 0;
-    const maxAttempts = 15;
-
-    while (attempts < maxAttempts) {
-      if (!mounted) return;
-      final authState = ref.read(authNotifierProvider);
-
-      if (authState is AuthAuthenticated) {
-        _navigated = true;
-        context.go(AppRoutes.home);
-        return;
-      }
-
-      if (authState is AuthUnauthenticated) {
-        _navigated = true;
-        final prefs = await SharedPreferences.getInstance();
-        final done = prefs.getBool('onboarding_done') ?? false;
-        if (!mounted) return;
-        context.go(done ? AppRoutes.login : AppRoutes.onboarding);
-        return;
-      }
-
-      attempts++;
-      await Future.delayed(const Duration(milliseconds: 400));
-    }
-
-    if (!mounted) return;
+  if(authState is AuthAuthenticated){
     _navigated = true;
-    context.go(AppRoutes.onboarding);
+    context.go(AppRoutes.home);
   }
+ else if(authState is AuthUnauthenticated){
+  _navigated = true;
+
+  final prefs = await SharedPreferences.getInstance();
+  final done = prefs.getBool('Onboarding_done') ?? false;
+
+  if(!mounted)return;
+  context.go(done ? AppRoutes.login : AppRoutes.onboarding);
+ }
+
+}
+  // Future<void> _navigate() async {
+  //   if (_navigated || !mounted) return;
+
+  //   int attempts = 0;
+  //   const maxAttempts = 15;
+
+  //   while (attempts < maxAttempts) {
+  //     if (!mounted) return;
+  //     final authState = ref.read(authNotifierProvider);
+
+  //     if (authState is AuthAuthenticated) {
+  //       _navigated = true;
+  //       context.go(AppRoutes.home);
+  //       return;
+  //     }
+
+  //     if (authState is AuthUnauthenticated) {
+  //       _navigated = true;
+  //       final prefs = await SharedPreferences.getInstance();
+  //       final done = prefs.getBool('onboarding_done') ?? false;
+  //       if (!mounted) return;
+  //       context.go(done ? AppRoutes.login : AppRoutes.onboarding);
+  //       return;
+  //     }
+
+  //     attempts++;
+  //     await Future.delayed(const Duration(milliseconds: 400));
+  //   }
+
+  //   if (!mounted) return;
+  //   _navigated = true;
+  //   context.go(AppRoutes.onboarding);
+  
 
   @override
   void dispose() {
@@ -123,11 +142,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(authNotifierProvider, (_, state) {
-      if (state is AuthAuthenticated || state is AuthUnauthenticated) {
-        _navigate();
-      }
-    });
+  ref.listen(authNotifierProvider,(pevious, next){
+    if(next is AuthAuthenticated || next is AuthUnauthenticated){
+      _navigate();
+    }
+  });
 
     return Scaffold(
       backgroundColor: AppColors.forest,
