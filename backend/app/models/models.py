@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Boolean, DateTime,
     Float, Text, ForeignKey, Integer,
-    Enum as SAEnum
+    Enum as SAEnum, UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -18,7 +18,7 @@ def utcnow():
 
 
 def generate_invite_code() -> str:
-    return f"CHNG-{secrets.token_hex(2).upper()}"
+    return f"CHNG-{secrets.token_hex(4).upper()}"
 
 
 
@@ -130,7 +130,7 @@ class Chama(Base):
     name         = Column(String(255), nullable=False)
     description  = Column(Text, nullable=True)
     avatar_color = Column(String(7), default="#1B4332")
-    invite_code  = Column(String(10), unique=True, nullable=False, default=generate_invite_code)
+    invite_code  = Column(String(16), unique=True, nullable=False, default=generate_invite_code)
     is_active    = Column(Boolean, default=True)
     created_at   = Column(DateTime(timezone=True), default=utcnow)
     updated_at   = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
@@ -150,6 +150,9 @@ class Chama(Base):
 
 class ChamaMember(Base):
     __tablename__ = "chama_members"
+    __table_args__ = (
+        UniqueConstraint("chama_id", "user_id", name="uq_chama_member"),
+    )
 
     id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     chama_id   = Column(UUID(as_uuid=True), ForeignKey("chamas.id"), nullable=False, index=True)
