@@ -14,23 +14,12 @@ class ChamaDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chamaAsync = ref.watch(
-      FutureProvider.autoDispose(
-        (ref) => ref.read(chamaRepositoryProvider).getChama(chamaId),
-      ).future,
-    );
+    final chamaAsync = ref.watch(chamaDetailProvider(chamaId));
 
-    return FutureBuilder<ChamaModel>(
-      future: chamaAsync,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const _LoadingScreen();
-        }
-        if (snap.hasError || !snap.hasData) {
-          return _ErrorScreen(onBack: () => context.pop());
-        }
-        return _ChamaDetailBody(chama: snap.data!, chamaId: chamaId);
-      },
+    return chamaAsync.when(
+      loading: () => const _LoadingScreen(),
+      error: (_, __) => _ErrorScreen(onBack: () => context.pop()),
+      data: (chama) => _ChamaDetailBody(chama: chama, chamaId: chamaId),
     );
   }
 }
@@ -54,11 +43,12 @@ class _ChamaDetailBody extends ConsumerWidget {
       backgroundColor: AppColors.cream,
       body: RefreshIndicator(
         color: AppColors.forest,
-        onRefresh:
-            () => ref.read(chamaProjectsProvider(chamaId).notifier).refresh(),
+        onRefresh: () async {
+          ref.invalidate(chamaDetailProvider(chamaId));
+          await ref.read(chamaProjectsProvider(chamaId).notifier).refresh();
+        },
         child: CustomScrollView(
           slivers: [
-          
             SliverAppBar(
               expandedHeight: 180,
               pinned: true,
@@ -103,7 +93,6 @@ class _ChamaDetailBody extends ConsumerWidget {
                   color: avatarColor,
                   child: Stack(
                     children: [
-                      // Decorative circle
                       Positioned(
                         right: -30,
                         top: -30,
@@ -153,8 +142,6 @@ class _ChamaDetailBody extends ConsumerWidget {
                 ),
               ),
             ),
-
-           
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -181,8 +168,6 @@ class _ChamaDetailBody extends ConsumerWidget {
                 ),
               ),
             ),
-
-          
             if (projectsState.isLoading)
               const SliverToBoxAdapter(
                 child: Center(
