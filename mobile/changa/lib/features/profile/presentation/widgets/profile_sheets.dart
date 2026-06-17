@@ -43,27 +43,25 @@ void showEditProfileSheet(
                   style: AppTextStyles.h3.copyWith(color: AppColors.forest),
                 ),
                 const SizedBox(height: 20),
-                Expanded(
-                  child: TextFormField(
-                    controller: nameCtrl,
-                    textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(
-                      labelText: 'Full name',
-                      prefixIcon: Icon(
-                        Icons.person_outline,
-                        color: AppColors.green,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
+                TextFormField(
+                  controller: nameCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(
+                    labelText: 'Full name',
+                    prefixIcon: Icon(
+                      Icons.person_outline,
+                      color: AppColors.green,
                     ),
-                    validator:
-                        (v) =>
-                            v == null || v.trim().length < 2
-                                ? 'Name is too short'
-                                : null,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                   ),
+                  validator:
+                      (v) =>
+                          v == null || v.trim().length < 2
+                              ? 'Name is too short'
+                              : null,
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
