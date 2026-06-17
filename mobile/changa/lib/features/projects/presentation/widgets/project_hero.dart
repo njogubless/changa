@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:flutter/material.dart';
 
@@ -37,10 +38,10 @@ class ProjectHero extends StatelessWidget {
       ],
       flexibleSpace: FlexibleSpaceBar(
         background: coverImageUrl != null
-            ? Image.network(
-                coverImageUrl!,
+            ? CachedNetworkImage(
+                imageUrl: coverImageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
+                errorWidget: (_, __, ___) =>
                     _HeroPlaceholder(title: title),
               )
             : _HeroPlaceholder(title: title),

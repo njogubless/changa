@@ -1,3 +1,4 @@
+import 'package:changa/core/errors/failures.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:changa/features/projects/data/repositories/project_repository.dart';
@@ -58,9 +59,7 @@ class ProjectsState {
 class ProjectsNotifier extends StateNotifier<ProjectsState> {
   final ProjectsRepository _repo;
 
-  ProjectsNotifier(this._repo) : super(const ProjectsState()) {
-    load();
-  }
+  ProjectsNotifier(this._repo) : super(const ProjectsState());
 
   Future<void> load({String? search}) async {
     state = state.copyWith(isLoading: true, searchQuery: search ?? '');
@@ -75,11 +74,10 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
         currentPage: 1,
         totalPages: result.pages,
       );
+    } on Failure catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: failureMessage(e));
     }
   }
 
@@ -106,20 +104,75 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
 }
 
 final projectsNotifierProvider =
-    StateNotifierProvider<ProjectsNotifier, ProjectsState>(
+    StateNotifierProvider.autoDispose<ProjectsNotifier, ProjectsState>(
   (ref) => ProjectsNotifier(ref.watch(projectsRepositoryProvider)),
 );
 
 
 
+class AllProjectsState {
+  final List<ProjectModel> projects;
+  final bool isLoading;
+  final String? error;
+
+  const AllProjectsState({
+    this.projects = const [],
+    this.isLoading = false,
+    this.error,
+  });
+
+  AllProjectsState copyWith({
+    List<ProjectModel>? projects,
+    bool? isLoading,
+    String? error,
+  }) =>
+      AllProjectsState(
+        projects: projects ?? this.projects,
+        isLoading: isLoading ?? this.isLoading,
+        error: error,
+      );
+}
+
+class AllProjectsNotifier extends StateNotifier<AllProjectsState> {
+  final ProjectsRepository _repo;
+
+  AllProjectsNotifier(this._repo) : super(const AllProjectsState());
+
+  Future<void> load() async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final result = await _repo.getMyProjects();
+      state = AllProjectsState(projects: result.items);
+    } on Failure catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: failureMessage(e));
+    }
+  }
+
+  Future<void> refresh() => load();
+}
+
+final allProjectsNotifierProvider =
+    StateNotifierProvider.autoDispose<AllProjectsNotifier, AllProjectsState>(
+  (ref) {
+    final notifier = AllProjectsNotifier(ref.watch(projectsRepositoryProvider));
+    notifier.load();
+    return notifier;
+  },
+);
+
+
+
 final projectDetailProvider =
-    FutureProvider.family<ProjectModel, String>((ref, id) async {
-  return ref.watch(projectsRepositoryProvider).getProject(id);
+    FutureProvider.autoDispose.family<ProjectModel, String>((ref, id) async {
+  return ref.read(projectsRepositoryProvider).getProject(id);
 });
 
 final projectContributorsProvider =
-    FutureProvider.family<List<ContributorModel>, String>((ref, id) async {
-  return ref.watch(projectsRepositoryProvider).getContributors(id);
+    FutureProvider.autoDispose.family<List<ContributorModel>, String>(
+        (ref, id) async {
+  return ref.read(projectsRepositoryProvider).getContributors(id);
 });
 
 

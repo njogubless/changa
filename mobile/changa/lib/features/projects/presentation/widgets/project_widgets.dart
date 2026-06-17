@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:changa/core/router/app_router.dart';
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/core/utils/currency_formatter.dart';
@@ -121,12 +122,13 @@ class _CoverImage extends StatelessWidget {
     if (url != null) {
       return ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        child: Image.network(
-          url!,
+        child: CachedNetworkImage(
+          imageUrl: url!,
           height: 140,
           width: double.infinity,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _placeholder(),
+          placeholder: (_, __) => _placeholder(),
+          errorWidget: (_, __, ___) => _placeholder(),
         ),
       );
     }
