@@ -98,7 +98,7 @@ class PaymentInitNotifier extends StateNotifier<PaymentInitState> {
 }
 
 final paymentInitProvider =
-    StateNotifierProvider<PaymentInitNotifier, PaymentInitState>(
+    StateNotifierProvider.autoDispose<PaymentInitNotifier, PaymentInitState>(
   (ref) => PaymentInitNotifier(ref.watch(paymentsRepositoryProvider)),
 );
 
