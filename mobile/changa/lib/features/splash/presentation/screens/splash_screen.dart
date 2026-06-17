@@ -39,16 +39,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // addPostFrameCallback ensures ref is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _authSub = ref.listenManual<AuthState>(
-        authNotifierProvider,
-        (previous, next) {
-          if (next is AuthAuthenticated ||
-              next is AuthUnauthenticated ||
-              next is AuthError) {
-            _navigate();
-          }
-        },
-      );
+      _authSub = ref.listenManual<AuthState>(authNotifierProvider, (
+        previous,
+        next,
+      ) {
+        if (next is AuthAuthenticated ||
+            next is AuthUnauthenticated ||
+            next is AuthError) {
+          _navigate();
+        }
+      });
     });
   }
 
@@ -75,9 +75,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
         curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
-    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
-    );
+    _textOpacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _textController, curve: Curves.easeIn));
     _textSlide = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
@@ -95,8 +96,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     if (!mounted) return;
     _textController.forward();
 
-    // Wait long enough for auth to resolve in most cases
-    await Future.delayed(const Duration(milliseconds: 1700));
+    // Short fallback — animations finish by ~1300 ms; 600 ms buffer is enough.
+    await Future.delayed(const Duration(milliseconds: 600));
     if (!mounted) return;
 
     // Timer expired — try to navigate now.
@@ -116,6 +117,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       return;
     }
 
+    // AuthError here means _checkSession failed — treat as unauthenticated.
+    // (AuthError from register/login never reaches splash after the router fix.)
     if (authState is AuthUnauthenticated || authState is AuthError) {
       _navigated = true;
       final prefs = await SharedPreferences.getInstance();
@@ -153,13 +156,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                 AnimatedBuilder(
                   animation: _logoController,
                   child: const _LogoMark(),
-                  builder: (context, child) => Opacity(
-                    opacity: _logoOpacity.value,
-                    child: Transform.scale(
-                      scale: _logoScale.value,
-                      child: child,
-                    ),
-                  ),
+                  builder:
+                      (context, child) => Opacity(
+                        opacity: _logoOpacity.value,
+                        child: Transform.scale(
+                          scale: _logoScale.value,
+                          child: child,
+                        ),
+                      ),
                 ),
                 const SizedBox(height: 24),
                 SlideTransition(
@@ -235,19 +239,22 @@ class _LogoPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final arcPaint = Paint()
-      ..color = AppColors.cream
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 5.5
-      ..strokeCap = StrokeCap.round;
+    final arcPaint =
+        Paint()
+          ..color = AppColors.cream
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5.5
+          ..strokeCap = StrokeCap.round;
 
-    final leafPaint = Paint()
-      ..color = AppColors.sage
-      ..style = PaintingStyle.fill;
+    final leafPaint =
+        Paint()
+          ..color = AppColors.sage
+          ..style = PaintingStyle.fill;
 
-    final accentPaint = Paint()
-      ..color = AppColors.mint
-      ..style = PaintingStyle.fill;
+    final accentPaint =
+        Paint()
+          ..color = AppColors.mint
+          ..style = PaintingStyle.fill;
 
     final cx = size.width * 0.52;
     final cy = size.height * 0.48;

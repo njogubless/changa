@@ -39,21 +39,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           email: _emailCtrl.text.trim(),
           password: _passwordCtrl.text,
         );
-        if(!mounted) return;
+    if (!mounted) return;
     final state = ref.read(authNotifierProvider);
     if (state is AuthAuthenticated) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Karibu tena, ${state.user.fullName.split(' ').first}! 👋'),
-      backgroundColor: AppColors.forest,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-  );
-}
-   
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Karibu tena, ${state.user.fullName.split(' ').first}! 👋',
+          ),
+          backgroundColor: AppColors.forest,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    } else if (state is AuthError) {
+      setState(() => _errorMessage = state.message);
+    }
   }
-
 
   @override
   Widget build(BuildContext context) {

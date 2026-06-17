@@ -18,6 +18,7 @@ import 'package:changa/features/projects/presentation/screens/create_screen.dart
 import 'package:changa/features/projects/presentation/screens/edit_project_screen.dart';
 import 'package:changa/features/projects/presentation/screens/project_detail_screen.dart';
 import 'package:changa/features/splash/presentation/screens/splash_screen.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,20 +34,17 @@ class AppRoutes {
   static const allProjects = '/projects';
   static const budget = '/budget';
 
-  // Chamas
   static const chamaDetail = '/chamas/:id';
   static const createChama = '/chamas/create';
   static const joinChama = '/chamas/join';
   static String chamaDetailPath(String id) => '/chamas/$id';
 
-  // Projects
   static const projectDetail = '/projects/:id';
   static const createProject = '/chamas/:chamaId/projects/create';
   static String projectDetailPath(String id) => '/projects/$id';
   static String createProjectPath(String chamaId) =>
       '/chamas/$chamaId/projects/create';
 
-  // Payments
   static const payment = '/payment';
   static const paymentStatus = '/payment/status';
   static String paymentPath(String projectId) =>
@@ -54,7 +52,6 @@ class AppRoutes {
   static String paymentStatusPath(String ref, double amount) =>
       '/payment/status?ref=$ref&amount=$amount';
 
-  // Budget 
   static const createBudget = '/budget/create';
   static const budgetDetail = '/budget/:id';
   static String budgetDetailPath(String id) => '/budget/$id';
@@ -63,19 +60,60 @@ class AppRoutes {
   static String chamaSettingsPath(String id) => '/chamas/$id/settings';
 }
 
+/// Cached onboarding flag to avoid SharedPreferences I/O on every redirect.
+bool? _onboardingDoneCache;
+
+Future<bool> _onboardingDone() async {
+  _onboardingDoneCache ??=
+      (await SharedPreferences.getInstance()).getBool('onboarding_done') ??
+      false;
+  return _onboardingDoneCache!;
+}
+
+void markOnboardingComplete() {
+  _onboardingDoneCache = true;
+}
+
+class RouterRefreshNotifier extends ChangeNotifier {
+  AuthState authState = const AuthInitial();
+
+  void update(AuthState next) {
+    authState = next;
+    notifyListeners();
+  }
+}
+
+final routerRefreshProvider = Provider<RouterRefreshNotifier>((ref) {
+  final notifier = RouterRefreshNotifier();
+  notifier.update(ref.read(authNotifierProvider));
+  ref.listen<AuthState>(authNotifierProvider, (_, next) {
+    notifier.update(next);
+  });
+  ref.onDispose(notifier.dispose);
+  return notifier;
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authNotifierProvider);
+  final refresh = ref.watch(routerRefreshProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
     debugLogDiagnostics: false,
+    refreshListenable: refresh,
     redirect: (context, state) async {
+      final authState = refresh.authState;
       final isAuthenticated = authState is AuthAuthenticated;
       final isInitial = authState is AuthInitial;
       final isLoading = authState is AuthLoading;
       final currentPath = state.matchedLocation;
 
-      if (isInitial || isLoading) return AppRoutes.splash;
+      // Only redirect to splash during cold-start (AuthInitial).
+      // Do NOT redirect during AuthLoading — the register/login screens
+      // already show their own loading state. Redirecting to splash here
+      // causes SplashScreen to intercept the result and send the user to
+      // login whenever registration/login fails.
+      if (isInitial) return AppRoutes.splash;
+      if (isLoading) return null;
 
       final authRoutes = [
         AppRoutes.login,
@@ -88,8 +126,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (authRoutes.contains(currentPath)) return AppRoutes.home;
         return null;
       } else {
-        final prefs = await SharedPreferences.getInstance();
-        final seenOnboarding = prefs.getBool('onboarding_done') ?? false;
+        final seenOnboarding = await _onboardingDone();
         if (currentPath == AppRoutes.onboarding) return null;
         if (!seenOnboarding) return AppRoutes.onboarding;
         if (!authRoutes.contains(currentPath)) return AppRoutes.login;
@@ -107,8 +144,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.register,
         builder: (_, __) => const RegisterScreen(),
       ),
-
-     
       ShellRoute(
         builder: (_, __, child) => ShellScreen(child: child),
         routes: [
@@ -126,14 +161,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-
-  
       GoRoute(
         path: AppRoutes.profile,
         builder: (_, __) => const ProfileScreen(),
       ),
-
-   
       GoRoute(
         path: AppRoutes.createChama,
         builder: (_, __) => const CreateChamaScreen(),
@@ -148,8 +179,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             (_, state) =>
                 ChamaDetailScreen(chamaId: state.pathParameters['id']!),
       ),
-
-      
       GoRoute(
         path: AppRoutes.createProject,
         builder:
@@ -168,8 +197,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             (_, state) =>
                 EditProjectScreen(project: state.extra as ProjectModel),
       ),
-
-  
       GoRoute(
         path: AppRoutes.createBudget,
         builder: (_, __) => const CreateBudgetScreen(),
@@ -180,7 +207,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             (_, state) =>
                 BudgetDetailScreen(budgetId: state.pathParameters['id']!),
       ),
-
       GoRoute(
         path: AppRoutes.payment,
         builder:
@@ -198,8 +224,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/chamas/:id/settings',
-        builder: (_, state)=> ChamaSettingsScreen(
-          chamaId:state.pathParameters['id']!,),),
+        builder:
+            (_, state) =>
+                ChamaSettingsScreen(chamaId: state.pathParameters['id']!),
+      ),
     ],
   );
 });
