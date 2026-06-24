@@ -1,5 +1,6 @@
 import 'package:changa/core/errors/failures.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
+import 'package:changa/features/chama/presentation/providers/chama_provider.dart';
 import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:changa/features/projects/data/repositories/project_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -154,3 +155,62 @@ final createProjectProvider = StateNotifierProvider.autoDispose<
   CreateProjectNotifier,
   CreateProjectState
 >((ref) => CreateProjectNotifier(ref.watch(projectsRepositoryProvider)));
+
+// ── All-projects aggregator ──────────────────────────────────────────────────
+// Combines projects from every Chama the user belongs to into one sorted list.
+// Uses ref.listen (not ref.watch in a loop) to avoid the variable-subscription
+// anti-pattern.
+
+class AllProjectsState {
+  final List<ProjectModel> projects;
+  final bool isLoading;
+  final String? error;
+
+  const AllProjectsState({
+    this.projects = const [],
+    this.isLoading = false,
+    this.error,
+  });
+}
+
+class AllProjectsNotifier extends StateNotifier<AllProjectsState> {
+  final Ref _ref;
+
+  AllProjectsNotifier(this._ref)
+    : super(const AllProjectsState(isLoading: true)) {
+    // React to every chama list change (including initial load)
+    _ref.listen(
+      chamaListProvider,
+      (_, chamaState) => _recompute(chamaState),
+      fireImmediately: true,
+    );
+  }
+
+  void _recompute(ChamaListState chamaState) {
+    if (chamaState.isLoading && state.projects.isEmpty) {
+      state = const AllProjectsState(isLoading: true);
+      return;
+    }
+    final allProjects = <ProjectModel>[];
+    for (final chama in chamaState.chamas) {
+      // read (not watch) is safe here — we're inside a listener callback
+      final cp = _ref.read(chamaProjectsProvider(chama.id));
+      allProjects.addAll(cp.projects);
+    }
+    allProjects.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    state = AllProjectsState(
+      projects: allProjects,
+      isLoading: chamaState.isLoading,
+    );
+  }
+
+  Future<void> refresh() async {
+    state = AllProjectsState(isLoading: true, projects: state.projects);
+    _ref.read(chamaListProvider.notifier).refresh();
+  }
+}
+
+final allProjectsNotifierProvider =
+    StateNotifierProvider<AllProjectsNotifier, AllProjectsState>(
+      (ref) => AllProjectsNotifier(ref),
+    );
