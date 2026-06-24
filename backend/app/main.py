@@ -15,19 +15,23 @@ async def lifespan(app: FastAPI):
     yield
 
 
+_docs_url = "/docs" if settings.DEBUG else None
+_redoc_url = "/redoc" if settings.DEBUG else None
+
 app = FastAPI(
     title=settings.APP_NAME,
     description="Group contribution platform for Kenya — M-Pesa & Airtel Money",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
     lifespan=lifespan,
 )
 
+_cors_origins = ["*"] if settings.DEBUG else settings.ALLOWED_HOSTS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.DEBUG else settings.ALLOWED_HOSTS,
-    allow_credentials=False if settings.DEBUG else True,
+    allow_origins=_cors_origins,
+    allow_credentials=not settings.DEBUG and "*" not in _cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )

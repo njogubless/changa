@@ -20,13 +20,14 @@ class ProjectDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectAsync = ref.watch(projectDetailProvider(projectId));
-    final currentUser = ref.watch(currentUserProvider);
 
     return projectAsync.when(
       loading: () => const _DetailSkeleton(),
       error: (e, _) => _DetailError(onBack: () => context.pop()),
       data: (project) {
-        final isOwner = currentUser?.id == project.ownerId;
+        final isOwner = ref.watch(
+          currentUserProvider.select((u) => u?.id == project.ownerId),
+        );
         return Scaffold(
           backgroundColor: AppColors.cream,
           body: CustomScrollView(
