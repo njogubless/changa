@@ -61,8 +61,9 @@ class _ProjectsListScreenState extends ConsumerState<ProjectsListScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(projectsNotifierProvider);
-    final user = ref.watch(currentUserProvider);
-    final firstName = user?.fullName.split(' ').first ?? '';
+    final firstName = ref.watch(
+      currentUserProvider.select((u) => u?.fullName.split(' ').first ?? ''),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.cream,

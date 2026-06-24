@@ -3,14 +3,9 @@ import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:changa/features/projects/data/repositories/project_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
-
-
 final projectsRepositoryProvider = Provider<ProjectsRepository>(
   (ref) => ProjectsRepository(ref.watch(apiClientProvider)),
 );
-
-
 
 class ProjectsState {
   final List<ProjectModel> projects;
@@ -41,19 +36,16 @@ class ProjectsState {
     int? currentPage,
     int? totalPages,
     String? searchQuery,
-  }) =>
-      ProjectsState(
-        projects: projects ?? this.projects,
-        isLoading: isLoading ?? this.isLoading,
-        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-        error: error,
-        currentPage: currentPage ?? this.currentPage,
-        totalPages: totalPages ?? this.totalPages,
-        searchQuery: searchQuery ?? this.searchQuery,
-      );
+  }) => ProjectsState(
+    projects: projects ?? this.projects,
+    isLoading: isLoading ?? this.isLoading,
+    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    error: error,
+    currentPage: currentPage ?? this.currentPage,
+    totalPages: totalPages ?? this.totalPages,
+    searchQuery: searchQuery ?? this.searchQuery,
+  );
 }
-
-
 
 class ProjectsNotifier extends StateNotifier<ProjectsState> {
   final ProjectsRepository _repo;
@@ -65,10 +57,7 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
   Future<void> load({String? search}) async {
     state = state.copyWith(isLoading: true, searchQuery: search ?? '');
     try {
-      final result = await _repo.getProjects(
-        page: 1,
-        search: search,
-      );
+      final result = await _repo.getProjects(page: 1, search: search);
       state = state.copyWith(
         projects: result.items,
         isLoading: false,
@@ -76,10 +65,7 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
         totalPages: result.pages,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -102,38 +88,33 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
     }
   }
 
-  Future<void> refresh() => load(search: state.searchQuery.isNotEmpty ? state.searchQuery : null);
+  Future<void> refresh() =>
+      load(search: state.searchQuery.isNotEmpty ? state.searchQuery : null);
 }
 
 final projectsNotifierProvider =
     StateNotifierProvider<ProjectsNotifier, ProjectsState>(
-  (ref) => ProjectsNotifier(ref.watch(projectsRepositoryProvider)),
-);
+      (ref) => ProjectsNotifier(ref.watch(projectsRepositoryProvider)),
+    );
 
-
-
-final projectDetailProvider =
-    FutureProvider.family<ProjectModel, String>((ref, id) async {
+final projectDetailProvider = FutureProvider.family<ProjectModel, String>((
+  ref,
+  id,
+) async {
   return ref.watch(projectsRepositoryProvider).getProject(id);
 });
 
 final projectContributorsProvider =
     FutureProvider.family<List<ContributorModel>, String>((ref, id) async {
-  return ref.watch(projectsRepositoryProvider).getContributors(id);
-});
-
-
+      return ref.watch(projectsRepositoryProvider).getContributors(id);
+    });
 
 class CreateProjectState {
   final bool isLoading;
   final String? error;
   final ProjectModel? created;
 
-  const CreateProjectState({
-    this.isLoading = false,
-    this.error,
-    this.created,
-  });
+  const CreateProjectState({this.isLoading = false, this.error, this.created});
 }
 
 class CreateProjectNotifier extends StateNotifier<CreateProjectState> {
@@ -168,7 +149,7 @@ class CreateProjectNotifier extends StateNotifier<CreateProjectState> {
   void reset() => state = const CreateProjectState();
 }
 
-final createProjectProvider =
-    StateNotifierProvider<CreateProjectNotifier, CreateProjectState>(
-  (ref) => CreateProjectNotifier(ref.watch(projectsRepositoryProvider)),
-);
+final createProjectProvider = StateNotifierProvider.autoDispose<
+  CreateProjectNotifier,
+  CreateProjectState
+>((ref) => CreateProjectNotifier(ref.watch(projectsRepositoryProvider)));
