@@ -1,3 +1,4 @@
+import 'package:changa/core/errors/failures.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:changa/features/projects/data/repositories/project_repository.dart';
@@ -50,9 +51,7 @@ class ProjectsState {
 class ProjectsNotifier extends StateNotifier<ProjectsState> {
   final ProjectsRepository _repo;
 
-  ProjectsNotifier(this._repo) : super(const ProjectsState()) {
-    load();
-  }
+  ProjectsNotifier(this._repo) : super(const ProjectsState());
 
   Future<void> load({String? search}) async {
     state = state.copyWith(isLoading: true, searchQuery: search ?? '');
@@ -64,6 +63,8 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
         currentPage: 1,
         totalPages: result.pages,
       );
+    } on Failure catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }

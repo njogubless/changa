@@ -8,6 +8,18 @@ class ProjectsRepository {
   final ApiClient _api;
   ProjectsRepository(this._api);
 
+  Future<ProjectListResponse> getMyProjects({
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    final response = await _api.get(
+      ApiConstants.myProjects,
+      params: {'page': page, 'page_size': pageSize},
+    );
+    return ProjectListResponse.fromJson(
+        response.data as Map<String, dynamic>);
+  }
+
   Future<ProjectListResponse> getProjects({
     int page = 1,
     int pageSize = 20,
