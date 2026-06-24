@@ -93,7 +93,11 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
     if not stored:
         raise HTTPException(status_code=401, detail="Refresh token revoked or not found")
 
-    
+    if stored.expires_at < datetime.now(timezone.utc):
+        stored.is_revoked = True
+        db.commit()
+        raise HTTPException(status_code=401, detail="Refresh token expired")
+
     stored.is_revoked = True
     new_refresh = create_refresh_token({"sub": token_payload["sub"]})
     db.add(RefreshToken(
@@ -135,5 +139,9 @@ def change_password(
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.hashed_password = hash_password(payload.new_password)
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.id,
+        RefreshToken.is_revoked == False,
+    ).update({"is_revoked": True})
     db.commit()
     return {"detail": "Password changed successfully"}
