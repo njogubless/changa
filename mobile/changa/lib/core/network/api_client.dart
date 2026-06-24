@@ -110,6 +110,7 @@ class ApiClient {
 class _AuthInterceptor extends Interceptor {
   final ApiClient _client;
   final FlutterSecureStorage _storage;
+  Future<void>? _refreshFuture;
 
   _AuthInterceptor(this._client, this._storage);
 
@@ -152,16 +153,15 @@ class _AuthInterceptor extends Interceptor {
       );
       if (refreshToken == null) return handler.next(err);
 
-      final refreshResponse = await _client.dio.post(
-        ApiConstants.refresh,
-        data: {'refresh_token': refreshToken},
-        options: Options(headers: {}),
-      );
+      _refreshFuture ??= _performRefresh(refreshToken);
+      try {
+        await _refreshFuture;
+      } finally {
+        _refreshFuture = null;
+      }
 
-      final newAccess = refreshResponse.data['access_token'] as String;
-      final newRefresh = refreshResponse.data['refresh_token'] as String;
-
-      await _client.saveTokens(access: newAccess, refresh: newRefresh);
+      final newAccess = await _storage.read(key: AppConstants.accessTokenKey);
+      if (newAccess == null) return handler.next(err);
 
       final retryOptions = err.requestOptions;
       retryOptions.headers['Authorization'] = 'Bearer $newAccess';
@@ -171,5 +171,17 @@ class _AuthInterceptor extends Interceptor {
       await _client.clearTokens();
       handler.next(err);
     }
+  }
+
+  Future<void> _performRefresh(String refreshToken) async {
+    final refreshResponse = await _client.dio.post(
+      ApiConstants.refresh,
+      data: {'refresh_token': refreshToken},
+      options: Options(headers: {}),
+    );
+
+    final newAccess = refreshResponse.data['access_token'] as String;
+    final newRefresh = refreshResponse.data['refresh_token'] as String;
+    await _client.saveTokens(access: newAccess, refresh: newRefresh);
   }
 }

@@ -6,13 +6,9 @@ import 'package:changa/features/chama/data/repository/chama_repository.dart';
 import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
-
 final chamaRepositoryProvider = Provider<ChamaRepository>(
   (ref) => ChamaRepository(ref.watch(apiClientProvider)),
 );
-
-
 
 class ChamaListState {
   final List<ChamaModel> chamas;
@@ -29,12 +25,11 @@ class ChamaListState {
     List<ChamaModel>? chamas,
     bool? isLoading,
     String? error,
-  }) =>
-      ChamaListState(
-        chamas: chamas ?? this.chamas,
-        isLoading: isLoading ?? this.isLoading,
-        error: error,
-      );
+  }) => ChamaListState(
+    chamas: chamas ?? this.chamas,
+    isLoading: isLoading ?? this.isLoading,
+    error: error,
+  );
 }
 
 class ChamaListNotifier extends StateNotifier<ChamaListState> {
@@ -63,14 +58,8 @@ class ChamaListNotifier extends StateNotifier<ChamaListState> {
 
 final chamaListProvider =
     StateNotifierProvider<ChamaListNotifier, ChamaListState>(
-  (ref) {
-    final notifier = ChamaListNotifier(ref.watch(chamaRepositoryProvider));
-    notifier.load();
-    return notifier;
-  },
-);
-
-
+      (ref) => ChamaListNotifier(ref.watch(chamaRepositoryProvider)),
+    );
 
 final chamaDetailProvider =
     FutureProvider.autoDispose.family<ChamaModel, String>((ref, id) async {
@@ -84,11 +73,7 @@ class CreateChamaState {
   final String? error;
   final ChamaModel? created;
 
-  const CreateChamaState({
-    this.isLoading = false,
-    this.error,
-    this.created,
-  });
+  const CreateChamaState({this.isLoading = false, this.error, this.created});
 }
 
 class CreateChamaNotifier extends StateNotifier<CreateChamaState> {
@@ -119,21 +104,15 @@ class CreateChamaNotifier extends StateNotifier<CreateChamaState> {
 
 final createChamaProvider =
     StateNotifierProvider.autoDispose<CreateChamaNotifier, CreateChamaState>(
-  (ref) => CreateChamaNotifier(ref.watch(chamaRepositoryProvider)),
-);
-
-
+      (ref) => CreateChamaNotifier(ref.watch(chamaRepositoryProvider)),
+    );
 
 class JoinChamaState {
   final bool isLoading;
   final String? error;
   final ChamaModel? joined;
 
-  const JoinChamaState({
-    this.isLoading = false,
-    this.error,
-    this.joined,
-  });
+  const JoinChamaState({this.isLoading = false, this.error, this.joined});
 }
 
 class JoinChamaNotifier extends StateNotifier<JoinChamaState> {
@@ -169,10 +148,8 @@ class JoinChamaNotifier extends StateNotifier<JoinChamaState> {
 
 final joinChamaProvider =
     StateNotifierProvider.autoDispose<JoinChamaNotifier, JoinChamaState>(
-  (ref) => JoinChamaNotifier(ref.watch(chamaRepositoryProvider)),
-);
-
-
+      (ref) => JoinChamaNotifier(ref.watch(chamaRepositoryProvider)),
+    );
 
 class ChamaProjectsState {
   final List<ProjectModel> projects;
@@ -189,12 +166,11 @@ class ChamaProjectsState {
     List<ProjectModel>? projects,
     bool? isLoading,
     String? error,
-  }) =>
-      ChamaProjectsState(
-        projects: projects ?? this.projects,
-        isLoading: isLoading ?? this.isLoading,
-        error: error,
-      );
+  }) => ChamaProjectsState(
+    projects: projects ?? this.projects,
+    isLoading: isLoading ?? this.isLoading,
+    error: error,
+  );
 }
 
 class ChamaProjectsNotifier extends StateNotifier<ChamaProjectsState> {
@@ -202,7 +178,9 @@ class ChamaProjectsNotifier extends StateNotifier<ChamaProjectsState> {
   final String chamaId;
 
   ChamaProjectsNotifier(this._repo, this.chamaId)
-      : super(const ChamaProjectsState());
+    : super(const ChamaProjectsState()) {
+    load();
+  }
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
@@ -219,17 +197,14 @@ class ChamaProjectsNotifier extends StateNotifier<ChamaProjectsState> {
   Future<void> refresh() => load();
 }
 
-final chamaProjectsProvider = StateNotifierProvider.autoDispose.family<
-    ChamaProjectsNotifier, ChamaProjectsState, String>(
-  (ref, chamaId) {
-    final notifier =
-        ChamaProjectsNotifier(ref.watch(chamaRepositoryProvider), chamaId);
-    notifier.load();
-    return notifier;
-  },
+final chamaProjectsProvider = StateNotifierProvider.family<
+  ChamaProjectsNotifier,
+  ChamaProjectsState,
+  String
+>(
+  (ref, chamaId) =>
+      ChamaProjectsNotifier(ref.watch(chamaRepositoryProvider), chamaId),
 );
-
-
 
 class CreateChamaProjectState {
   final bool isLoading;
@@ -248,7 +223,7 @@ class CreateChamaProjectNotifier
   final ChamaRepository _repo;
 
   CreateChamaProjectNotifier(this._repo)
-      : super(const CreateChamaProjectState());
+    : super(const CreateChamaProjectState());
 
   Future<void> create({
     required String chamaId,
@@ -286,6 +261,6 @@ class CreateChamaProjectNotifier
 }
 
 final createChamaProjectProvider = StateNotifierProvider.autoDispose<
-    CreateChamaProjectNotifier, CreateChamaProjectState>(
-  (ref) => CreateChamaProjectNotifier(ref.watch(chamaRepositoryProvider)),
-);
+  CreateChamaProjectNotifier,
+  CreateChamaProjectState
+>((ref) => CreateChamaProjectNotifier(ref.watch(chamaRepositoryProvider)));

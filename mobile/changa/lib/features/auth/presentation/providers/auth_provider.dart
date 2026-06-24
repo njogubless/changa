@@ -1,8 +1,11 @@
+import 'package:changa/core/constants/app_constants.dart';
+import 'package:changa/core/errors/failures.dart';
 import 'package:changa/core/network/api_client.dart';
 import 'package:changa/features/auth/data/models/auth_models.dart';
 import 'package:changa/features/auth/data/repositories/auth_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final secureStorageProvider = Provider<FlutterSecureStorage>(
   (_) => const FlutterSecureStorage(
@@ -54,25 +57,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _checkSession();
   }
 
-Future<void> _checkSession() async {
-  print('>>> CHECK SESSION STARTED');
-  final isLoggedIn = await _repo.isLoggedIn();
-  print('>>> IS LOGGED IN: $isLoggedIn');
-  if (!isLoggedIn) {
-    state = const AuthUnauthenticated();
-    print('>>> STATE SET: AuthUnauthenticated');
-    return;
+  Future<void> _checkSession() async {
+    final isLoggedIn = await _repo.isLoggedIn();
+    if (!isLoggedIn) {
+      state = const AuthUnauthenticated();
+      return;
+    }
+    final user = await _repo.getMe();
+    if (user != null) {
+      state = AuthAuthenticated(user);
+    } else {
+      state = const AuthUnauthenticated();
+    }
   }
-  final user = await _repo.getMe();
-  print('>>> GET ME RESULT: $user');
-  if (user != null) {
-    state = AuthAuthenticated(user);
-    print('>>> STATE SET: AuthAuthenticated');
-  } else {
-    state = const AuthUnauthenticated();
-    print('>>> STATE SET: AuthUnauthenticated (no user)');
-  }
-}
 
   Future<void> register({
     required String fullName,
@@ -88,9 +85,15 @@ Future<void> _checkSession() async {
         phone: phone,
         password: password,
       );
+      // Persist onboarding flag so it's never shown again after registration.
+      SharedPreferences.getInstance().then(
+        (prefs) => prefs.setBool(AppConstants.onboardingDoneKey, true),
+      );
       state = AuthAuthenticated(tokens.user);
+    } on Failure catch (e) {
+      state = AuthError(e.message);
     } catch (e) {
-      state = AuthError(e.toString());
+      state = AuthError(failureMessage(e));
     }
   }
 
@@ -99,8 +102,10 @@ Future<void> _checkSession() async {
     try {
       final tokens = await _repo.login(email: email, password: password);
       state = AuthAuthenticated(tokens.user);
+    } on Failure catch (e) {
+      state = AuthError(e.message);
     } catch (e) {
-      state = AuthError(e.toString());
+      state = AuthError(failureMessage(e));
     }
   }
 
