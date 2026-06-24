@@ -15,7 +15,8 @@ class AllProjectsScreen extends ConsumerWidget {
       backgroundColor: AppColors.cream,
       body: RefreshIndicator(
         color: AppColors.forest,
-        onRefresh: () => ref.read(allProjectsNotifierProvider.notifier).refresh(),
+        onRefresh:
+            () => ref.read(allProjectsNotifierProvider.notifier).refresh(),
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
@@ -48,13 +49,16 @@ class AllProjectsScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 14),
+                  horizontal: 20,
+                  vertical: 14,
+                ),
                 child: Text(
                   state.isLoading
                       ? 'Loading...'
                       : '${state.projects.length} project${state.projects.length == 1 ? '' : 's'}',
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: AppColors.green),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.green,
+                  ),
                 ),
               ),
             ),
@@ -70,7 +74,7 @@ class AllProjectsScreen extends ConsumerWidget {
                   ),
                 ),
               )
-            else if (projects.isEmpty)
+            else if (state.projects.isEmpty)
               const SliverFillRemaining(child: _EmptyProjects())
             else
               SliverPadding(
@@ -96,34 +100,37 @@ class _EmptyProjects extends StatelessWidget {
   const _EmptyProjects();
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: AppColors.sage.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.folder_outlined,
-                    color: AppColors.forest, size: 32),
-              ),
-              const SizedBox(height: 16),
-              Text('No projects yet',
-                  style:
-                      AppTextStyles.h4.copyWith(color: AppColors.forest)),
-              const SizedBox(height: 8),
-              Text(
-                'Join or create a Chama, then\nthe owner can add projects.',
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: AppColors.green),
-                textAlign: TextAlign.center,
-              ),
-            ],
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.sage.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.folder_outlined,
+              color: AppColors.forest,
+              size: 32,
+            ),
           ),
-        ),
-      );
+          const SizedBox(height: 16),
+          Text(
+            'No projects yet',
+            style: AppTextStyles.h4.copyWith(color: AppColors.forest),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Join or create a Chama, then\nthe owner can add projects.',
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.green),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    ),
+  );
 }
