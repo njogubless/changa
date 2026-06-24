@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload, selectinload
 from uuid import UUID
 
 from app.database import get_db
@@ -89,9 +89,15 @@ def list_my_chamas(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    memberships = db.query(ChamaMember).filter(
-        ChamaMember.user_id == current_user.id,
-    ).all()
+    memberships = (
+        db.query(ChamaMember)
+        .options(
+            joinedload(ChamaMember.chama).selectinload(Chama.members),
+            joinedload(ChamaMember.chama).selectinload(Chama.projects),
+        )
+        .filter(ChamaMember.user_id == current_user.id)
+        .all()
+    )
 
     chamas = [m.chama for m in memberships if m.chama.is_active]
     return ChamaListResponse(
@@ -107,7 +113,17 @@ def get_chama(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    chama = _get_chama_or_404(chama_id, db)
+    chama = (
+        db.query(Chama)
+        .options(
+            selectinload(Chama.members).joinedload(ChamaMember.user),
+            selectinload(Chama.projects),
+        )
+        .filter(Chama.id == chama_id)
+        .first()
+    )
+    if not chama:
+        raise HTTPException(status_code=404, detail="Chama not found")
     _assert_member(chama, current_user, db)
 
     return ChamaDetailResponse(
@@ -259,8 +275,8 @@ def regenerate_invite_code(
 @router.get("/{chama_id}/projects", response_model=ProjectListResponse)
 def list_chama_projects(
     chama_id: UUID,
-    page: int = 1,
-    page_size: int = 20,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
