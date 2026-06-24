@@ -8,29 +8,24 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+// Stable family provider — one instance per chamaId, cached across rebuilds
+final chamaDetailProvider =
+    FutureProvider.autoDispose.family<ChamaModel, String>(
+  (ref, chamaId) => ref.read(chamaRepositoryProvider).getChama(chamaId),
+);
+
 class ChamaDetailScreen extends ConsumerWidget {
   final String chamaId;
   const ChamaDetailScreen({super.key, required this.chamaId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final chamaAsync = ref.watch(
-      FutureProvider.autoDispose(
-        (ref) => ref.read(chamaRepositoryProvider).getChama(chamaId),
-      ).future,
-    );
+    final chamaAsync = ref.watch(chamaDetailProvider(chamaId));
 
-    return FutureBuilder<ChamaModel>(
-      future: chamaAsync,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const _LoadingScreen();
-        }
-        if (snap.hasError || !snap.hasData) {
-          return _ErrorScreen(onBack: () => context.pop());
-        }
-        return _ChamaDetailBody(chama: snap.data!, chamaId: chamaId);
-      },
+    return chamaAsync.when(
+      loading: () => const _LoadingScreen(),
+      error: (e, _) => _ErrorScreen(onBack: () => Navigator.of(context).pop()),
+      data: (chama) => _ChamaDetailBody(chama: chama, chamaId: chamaId),
     );
   }
 }
@@ -44,8 +39,9 @@ class _ChamaDetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsState = ref.watch(chamaProjectsProvider(chamaId));
-    final currentUser = ref.watch(currentUserProvider);
-    final isOwner = currentUser?.id == chama.ownerId;
+    final isOwner = ref.watch(
+      currentUserProvider.select((u) => u?.id == chama.ownerId),
+    );
     final avatarColor = Color(
       int.parse(chama.avatarColor.replaceFirst('#', '0xFF')),
     );
