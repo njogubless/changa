@@ -5,13 +5,9 @@ import 'package:changa/features/payments/data/models/payment_models.dart';
 import 'package:changa/features/payments/data/repository/payments_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
-
 final paymentsRepositoryProvider = Provider<PaymentsRepository>(
   (ref) => PaymentsRepository(ref.watch(apiClientProvider)),
 );
-
-
 
 sealed class PaymentInitState {
   const PaymentInitState();
@@ -98,11 +94,9 @@ class PaymentInitNotifier extends StateNotifier<PaymentInitState> {
 }
 
 final paymentInitProvider =
-    StateNotifierProvider<PaymentInitNotifier, PaymentInitState>(
-  (ref) => PaymentInitNotifier(ref.watch(paymentsRepositoryProvider)),
-);
-
-
+    StateNotifierProvider.autoDispose<PaymentInitNotifier, PaymentInitState>(
+      (ref) => PaymentInitNotifier(ref.watch(paymentsRepositoryProvider)),
+    );
 
 enum PollStatus { polling, success, failed, timeout }
 
@@ -125,7 +119,7 @@ class PaymentPollNotifier extends StateNotifier<PaymentPollState> {
   Timer? _timer;
 
   PaymentPollNotifier(this._repo)
-      : super(const PaymentPollState(status: PollStatus.polling));
+    : super(const PaymentPollState(status: PollStatus.polling));
 
   void startPolling(String reference) {
     _timer?.cancel();
@@ -141,7 +135,8 @@ class PaymentPollNotifier extends StateNotifier<PaymentPollState> {
       state = PaymentPollState(
         status: PollStatus.timeout,
         attempts: state.attempts,
-        failureReason: 'Payment confirmation timed out. Check your M-Pesa messages.',
+        failureReason:
+            'Payment confirmation timed out. Check your M-Pesa messages.',
       );
       return;
     }
@@ -198,12 +193,10 @@ class PaymentPollNotifier extends StateNotifier<PaymentPollState> {
 
 final paymentPollProvider =
     StateNotifierProvider.autoDispose<PaymentPollNotifier, PaymentPollState>(
-  (ref) => PaymentPollNotifier(ref.watch(paymentsRepositoryProvider)),
-);
-
-
+      (ref) => PaymentPollNotifier(ref.watch(paymentsRepositoryProvider)),
+    );
 
 final myContributionsProvider =
     FutureProvider.autoDispose<List<ContributionModel>>((ref) async {
-  return ref.watch(paymentsRepositoryProvider).getMyContributions();
-});
+      return ref.watch(paymentsRepositoryProvider).getMyContributions();
+    });

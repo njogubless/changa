@@ -16,6 +16,7 @@ static const String baseUrl = 'http://192.168.1.193:8000';
   static const String changePassword = '/auth/change-password';
 
   static const String projects = '/projects';
+  static const String myProjects = '/projects/mine';
   static String projectById(String id) => '/projects/$id';
   static String projectContributors(String id) => '/projects/$id/contributors';
   static String projectMembers(String id) => '/projects/$id/members';

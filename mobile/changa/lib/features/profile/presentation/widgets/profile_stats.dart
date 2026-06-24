@@ -1,5 +1,6 @@
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/core/utils/currency_formatter.dart';
+import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/payments/presentation/providers/payments_provider.dart';
 import 'package:changa/features/projects/presentation/providers/project_provider.dart';
 import 'package:flutter/material.dart';
@@ -7,16 +8,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 
 class ProfileStatsRow extends ConsumerWidget {
-  final String userId;
-  const ProfileStatsRow({super.key, required this.userId});
+  const ProfileStatsRow({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final projectsState = ref.watch(projectsNotifierProvider);
+    final userId = ref.watch(currentUserProvider.select((u) => u?.id));
+    final myProjectCount = ref.watch(
+      projectsNotifierProvider.select(
+        (s) => s.projects.where((p) => p.ownerId == userId).length,
+      ),
+    );
     final contributionsAsync = ref.watch(myContributionsProvider);
-
-    final myProjectCount =
-        projectsState.projects.where((p) => p.ownerId == userId).length;
 
     final (contribCount, totalContributed) =
         contributionsAsync.when(
@@ -48,9 +50,9 @@ class ProfileStatsRow extends ConsumerWidget {
       child: Row(
         children: [
           _StatItem(value: '$myProjectCount', label: 'Projects\ncreated'),
-          _Divider(),
+          const _Divider(),
           _StatItem(value: '$contribCount', label: 'Contributions\nmade'),
-          _Divider(),
+          const _Divider(),
           _StatItem(
             value: CurrencyFormatter.formatCompact(totalContributed),
             label: 'Total\ncontributed',
@@ -94,6 +96,7 @@ class _StatItem extends StatelessWidget {
 }
 
 class _Divider extends StatelessWidget {
+  const _Divider();
   @override
   Widget build(BuildContext context) => Container(
         height: 40,

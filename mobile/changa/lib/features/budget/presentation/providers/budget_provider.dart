@@ -7,7 +7,6 @@ final budgetRepositoryProvider = Provider<BudgetRepository>(
   (ref) => ApiBudgetRepository(ref.watch(apiClientProvider)),
 );
 
-
 class BudgetListState {
   final List<BudgetModel> budgets;
   final bool isLoading;
@@ -59,8 +58,6 @@ final budgetListProvider =
     StateNotifierProvider<BudgetListNotifier, BudgetListState>(
       (ref) => BudgetListNotifier(ref.watch(budgetRepositoryProvider)),
     );
-
-
 
 class BudgetDetailState {
   final BudgetModel? budget;
@@ -140,8 +137,6 @@ final budgetDetailProvider = StateNotifierProvider.family<
   String
 >((ref, id) => BudgetDetailNotifier(ref.watch(budgetRepositoryProvider), id));
 
-
-
 class CreateBudgetState {
   final bool isLoading;
   final BudgetModel? created;
@@ -199,6 +194,6 @@ class CreateBudgetNotifier extends StateNotifier<CreateBudgetState> {
 }
 
 final createBudgetProvider =
-    StateNotifierProvider<CreateBudgetNotifier, CreateBudgetState>(
+    StateNotifierProvider.autoDispose<CreateBudgetNotifier, CreateBudgetState>(
       (ref) => CreateBudgetNotifier(ref.watch(budgetRepositoryProvider)),
     );

@@ -4,14 +4,9 @@ import 'package:changa/features/projects/data/models/project_models.dart';
 import 'package:changa/features/projects/data/repositories/project_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
-
-
 final projectsRepositoryProvider = Provider<ProjectsRepository>(
   (ref) => ProjectsRepository(ref.watch(apiClientProvider)),
 );
-
-
 
 class ProjectsState {
   final List<ProjectModel> projects;
@@ -42,19 +37,16 @@ class ProjectsState {
     int? currentPage,
     int? totalPages,
     String? searchQuery,
-  }) =>
-      ProjectsState(
-        projects: projects ?? this.projects,
-        isLoading: isLoading ?? this.isLoading,
-        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-        error: error,
-        currentPage: currentPage ?? this.currentPage,
-        totalPages: totalPages ?? this.totalPages,
-        searchQuery: searchQuery ?? this.searchQuery,
-      );
+  }) => ProjectsState(
+    projects: projects ?? this.projects,
+    isLoading: isLoading ?? this.isLoading,
+    isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    error: error,
+    currentPage: currentPage ?? this.currentPage,
+    totalPages: totalPages ?? this.totalPages,
+    searchQuery: searchQuery ?? this.searchQuery,
+  );
 }
-
-
 
 class ProjectsNotifier extends StateNotifier<ProjectsState> {
   final ProjectsRepository _repo;
@@ -64,10 +56,7 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
   Future<void> load({String? search}) async {
     state = state.copyWith(isLoading: true, searchQuery: search ?? '');
     try {
-      final result = await _repo.getProjects(
-        page: 1,
-        search: search,
-      );
+      final result = await _repo.getProjects(page: 1, search: search);
       state = state.copyWith(
         projects: result.items,
         isLoading: false,
@@ -77,7 +66,7 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
     } on Failure catch (e) {
       state = state.copyWith(isLoading: false, error: e.message);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: failureMessage(e));
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -100,93 +89,33 @@ class ProjectsNotifier extends StateNotifier<ProjectsState> {
     }
   }
 
-  Future<void> refresh() => load(search: state.searchQuery.isNotEmpty ? state.searchQuery : null);
+  Future<void> refresh() =>
+      load(search: state.searchQuery.isNotEmpty ? state.searchQuery : null);
 }
 
 final projectsNotifierProvider =
-    StateNotifierProvider.autoDispose<ProjectsNotifier, ProjectsState>(
-  (ref) => ProjectsNotifier(ref.watch(projectsRepositoryProvider)),
-);
+    StateNotifierProvider<ProjectsNotifier, ProjectsState>(
+      (ref) => ProjectsNotifier(ref.watch(projectsRepositoryProvider)),
+    );
 
-
-
-class AllProjectsState {
-  final List<ProjectModel> projects;
-  final bool isLoading;
-  final String? error;
-
-  const AllProjectsState({
-    this.projects = const [],
-    this.isLoading = false,
-    this.error,
-  });
-
-  AllProjectsState copyWith({
-    List<ProjectModel>? projects,
-    bool? isLoading,
-    String? error,
-  }) =>
-      AllProjectsState(
-        projects: projects ?? this.projects,
-        isLoading: isLoading ?? this.isLoading,
-        error: error,
-      );
-}
-
-class AllProjectsNotifier extends StateNotifier<AllProjectsState> {
-  final ProjectsRepository _repo;
-
-  AllProjectsNotifier(this._repo) : super(const AllProjectsState());
-
-  Future<void> load() async {
-    state = state.copyWith(isLoading: true, error: null);
-    try {
-      final result = await _repo.getMyProjects();
-      state = AllProjectsState(projects: result.items);
-    } on Failure catch (e) {
-      state = state.copyWith(isLoading: false, error: e.message);
-    } catch (e) {
-      state = state.copyWith(isLoading: false, error: failureMessage(e));
-    }
-  }
-
-  Future<void> refresh() => load();
-}
-
-final allProjectsNotifierProvider =
-    StateNotifierProvider.autoDispose<AllProjectsNotifier, AllProjectsState>(
-  (ref) {
-    final notifier = AllProjectsNotifier(ref.watch(projectsRepositoryProvider));
-    notifier.load();
-    return notifier;
-  },
-);
-
-
-
-final projectDetailProvider =
-    FutureProvider.autoDispose.family<ProjectModel, String>((ref, id) async {
-  return ref.read(projectsRepositoryProvider).getProject(id);
+final projectDetailProvider = FutureProvider.family<ProjectModel, String>((
+  ref,
+  id,
+) async {
+  return ref.watch(projectsRepositoryProvider).getProject(id);
 });
 
 final projectContributorsProvider =
-    FutureProvider.autoDispose.family<List<ContributorModel>, String>(
-        (ref, id) async {
-  return ref.read(projectsRepositoryProvider).getContributors(id);
-});
-
-
+    FutureProvider.family<List<ContributorModel>, String>((ref, id) async {
+      return ref.watch(projectsRepositoryProvider).getContributors(id);
+    });
 
 class CreateProjectState {
   final bool isLoading;
   final String? error;
   final ProjectModel? created;
 
-  const CreateProjectState({
-    this.isLoading = false,
-    this.error,
-    this.created,
-  });
+  const CreateProjectState({this.isLoading = false, this.error, this.created});
 }
 
 class CreateProjectNotifier extends StateNotifier<CreateProjectState> {
@@ -221,7 +150,7 @@ class CreateProjectNotifier extends StateNotifier<CreateProjectState> {
   void reset() => state = const CreateProjectState();
 }
 
-final createProjectProvider =
-    StateNotifierProvider<CreateProjectNotifier, CreateProjectState>(
-  (ref) => CreateProjectNotifier(ref.watch(projectsRepositoryProvider)),
-);
+final createProjectProvider = StateNotifierProvider.autoDispose<
+  CreateProjectNotifier,
+  CreateProjectState
+>((ref) => CreateProjectNotifier(ref.watch(projectsRepositoryProvider)));

@@ -63,6 +63,6 @@ class EditProjectNotifier extends StateNotifier<EditProjectState> {
 
 
 final editProjectProvider =
-    StateNotifierProvider<EditProjectNotifier, EditProjectState>(
+    StateNotifierProvider.autoDispose<EditProjectNotifier, EditProjectState>(
   (ref) => EditProjectNotifier(ref.watch(projectsRepositoryProvider)),
 );

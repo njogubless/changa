@@ -42,7 +42,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
 
          
-          SliverToBoxAdapter(child: ProfileStatsRow(userId: user.id)),
+          SliverToBoxAdapter(child: ProfileStatsRow()),
 
          
           SliverToBoxAdapter(
