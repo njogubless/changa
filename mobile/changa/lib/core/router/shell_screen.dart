@@ -3,6 +3,7 @@ import 'package:changa/core/router/app_drawer.dart';
 import 'package:changa/core/themes/app_theme.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'app_router.dart';
@@ -30,23 +31,32 @@ class _ShellScreenState extends State<ShellScreen> {
   @override
   Widget build(BuildContext context) {
     final currentIndex = _locationToIndex(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        systemNavigationBarColor: isDark ? AppColors.earth : AppColors.white,
+        systemNavigationBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
+      ),
+    );
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: AppColors.cream,
+      backgroundColor: isDark ? AppColors.charcoal : AppColors.cream,
       // Drawer is isolated — only rebuilds when user changes, not whole shell
       drawer: _DrawerConsumer(scaffoldKey: _scaffoldKey),
-      body: ColoredBox(
-        color: AppColors.cream,
-        child: widget.child,
-      ),
+      body: ColoredBox(color: AppColors.cream, child: widget.child),
       bottomNavigationBar: _BottomNav(
         currentIndex: currentIndex,
         onTap: (i) {
           switch (i) {
-            case 0: context.go(AppRoutes.home);
-            case 1: context.go(AppRoutes.allProjects);
-            case 2: context.go(AppRoutes.budget);
+            case 0:
+              context.go(AppRoutes.home);
+            case 1:
+              context.go(AppRoutes.allProjects);
+            case 2:
+              context.go(AppRoutes.budget);
           }
         },
       ),
@@ -76,10 +86,6 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return NavigationBar(
       selectedIndex: currentIndex,
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
-      shadowColor: Colors.transparent,
-      indicatorColor: AppColors.forest.withValues(alpha: 0.1),
       onDestinationSelected: onTap,
       destinations: const [
         NavigationDestination(
