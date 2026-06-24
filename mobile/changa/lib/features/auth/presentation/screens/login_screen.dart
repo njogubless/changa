@@ -50,8 +50,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
-}
+} else if (state is AuthError) {
+      setState(() => _errorMessage = _friendlyError(state.message));
+    }
    
+  }
+
+  String _friendlyError(String raw) {
+    if (raw.contains('401') || raw.contains('credentials') || raw.contains('password')) {
+      return 'Incorrect email or password.';
+    }
+    if (raw.contains('404') || raw.contains('not found')) {
+      return 'No account found with this email.';
+    }
+    if (raw.contains('Network') || raw.contains('connection')) {
+      return 'No internet connection. Please check your network.';
+    }
+    return 'Sign in failed. Please try again.';
   }
 
 
