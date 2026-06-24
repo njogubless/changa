@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-
-
 class AppColors {
   AppColors._();
 
@@ -38,7 +36,6 @@ class AppColors {
   static const info = Color(0xFF1565C0);
 }
 
-
 class AppSpacing {
   AppSpacing._();
 
@@ -62,8 +59,6 @@ class AppSpacing {
   );
 }
 
-
-
 class AppRadius {
   AppRadius._();
 
@@ -79,8 +74,6 @@ class AppRadius {
   static BorderRadius xlAll = BorderRadius.circular(xl);
   static BorderRadius pillAll = BorderRadius.circular(pill);
 }
-
-
 
 class AppTextStyles {
   AppTextStyles._();
@@ -422,14 +415,19 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: AppColors.earth,
         indicatorColor: AppColors.sage.withValues(alpha: 0.2),
-        labelTextStyle: WidgetStateProperty.all(
-          AppTextStyles.tab.copyWith(color: AppColors.cream),
-        ),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppTextStyles.tab.copyWith(color: AppColors.sage);
+          }
+          return AppTextStyles.tab.copyWith(
+            color: AppColors.sand.withValues(alpha: 0.6),
+          );
+        }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: AppColors.sage);
           }
-          return const IconThemeData(color: Colors.grey);
+          return IconThemeData(color: AppColors.sand.withValues(alpha: 0.5));
         }),
       ),
 
