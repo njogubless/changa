@@ -104,7 +104,7 @@ class AllProjectsScreen extends ConsumerWidget {
                 ),
               )
             else if (projects.isEmpty)
-              SliverFillRemaining(child: _EmptyProjects())
+              const SliverFillRemaining(child: _EmptyProjects())
             else
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -126,6 +126,7 @@ class AllProjectsScreen extends ConsumerWidget {
 }
 
 class _EmptyProjects extends StatelessWidget {
+  const _EmptyProjects();
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
