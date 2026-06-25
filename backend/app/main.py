@@ -5,6 +5,8 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.database import create_tables
 from app.routers import auth, projects, payments, chamas, budgets
+from app.routers import chama_members
+app.include_router(chama_members.router)
 
 
 @asynccontextmanager
