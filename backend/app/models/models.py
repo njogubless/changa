@@ -337,3 +337,45 @@ class BudgetExpense(Base):
 
     # Relationships
     category = relationship("BudgetCategory", back_populates="expenses")
+
+
+
+
+class InviteStatus(str, enum.Enum):
+    PENDING  = "pending"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    EXPIRED  = "expired"
+
+
+class InviteMethod(str, enum.Enum):
+    PHONE = "phone"   # admin invited by phone number
+    CODE  = "code"    # user joined by pasting a code
+
+
+class ChamaInvite(Base):
+    __tablename__ = "chama_invites"
+
+    id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    chama_id    = Column(UUID(as_uuid=True), ForeignKey("chamas.id", ondelete="CASCADE"), nullable=False, index=True)
+    invited_by  = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+
+    # Phone invite fields
+    phone       = Column(String(20), nullable=True, index=True)   # 254XXXXXXXXX
+    user_id     = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+
+    # Code invite fields
+    invite_code = Column(String(12), unique=True, nullable=True, index=True)
+
+    method      = Column(SAEnum(InviteMethod), nullable=False, default=InviteMethod.PHONE)
+    status      = Column(SAEnum(InviteStatus), nullable=False, default=InviteStatus.PENDING)
+
+    created_at  = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    expires_at  = Column(DateTime(timezone=True), nullable=False,
+                         default=lambda: datetime.now(timezone.utc) + timedelta(days=7))
+    responded_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    chama       = relationship("Chama", back_populates="invites")
+    inviter     = relationship("User", foreign_keys=[invited_by])
+    invitee     = relationship("User", foreign_keys=[user_id])
