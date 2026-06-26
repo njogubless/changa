@@ -1,6 +1,6 @@
 import uuid
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from sqlalchemy import (
     Column, String, Boolean, DateTime,
     Float, Text, ForeignKey, Integer,
