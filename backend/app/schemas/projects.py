@@ -179,12 +179,3 @@ class ContributionStatusResponse(BaseModel):
     provider_reference: Optional[str]
     amount: Decimal
     completed_at: Optional[datetime]
-
-
-class MpesaCallbackRequest(BaseModel):
-    Body: dict
-
-
-class AirtelCallbackRequest(BaseModel):
-    transaction: Optional[dict] = None
-    status: Optional[str] = None

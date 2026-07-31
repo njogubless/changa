@@ -52,6 +52,35 @@ async def initiate_payment(phone: str, amount: Decimal, reference: str) -> dict:
         return response.json()
 
 
+async def query_transaction_status(reference: str) -> dict:
+    """Ask Airtel directly whether this transaction reference completed.
+
+    Mirrors mpesa.query_stk_status: the callback body is unauthenticated
+    and must never be trusted on its own (see PAY-01). This requires our
+    own Airtel credentials to call, so its answer can't be forged by a
+    third party the way a POSTed callback body can.
+    """
+    token = await get_access_token()
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{settings.AIRTEL_BASE_URL}/standard/v1/payments/{reference}",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "X-Country": "KE",
+                "X-Currency": "KES",
+            },
+            timeout=15.0,
+        )
+
+    if response.status_code != 200:
+        return {"success": False, "receipt": None}
+
+    transaction = response.json().get("data", {}).get("transaction", {})
+    success = transaction.get("status") == "TS"
+    return {"success": success, "receipt": transaction.get("airtel_money_id")}
+
+
 def parse_callback(body: dict) -> dict:
     """
     Parse Airtel Money callback.

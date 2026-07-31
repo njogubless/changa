@@ -1,19 +1,21 @@
+import hmac
+import json
 import secrets
 from datetime import datetime, timezone
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.models import (
     User, Project, Contribution, ContributionStatus, PaymentProvider,
-    ChamaMember,
+    ChamaMember, ProviderEvent,
 )
 from app.schemas.projects import (
     MpesaContributeRequest, AirtelContributeRequest,
     ContributionResponse, ContributionStatusResponse,
-    MpesaCallbackRequest, AirtelCallbackRequest,
 )
 from app.services import mpesa, airtel, ledger_service
 
@@ -21,7 +23,13 @@ router = APIRouter(tags=["Payments"])
 
 
 def _generate_reference(prefix: str) -> str:
-    return f"{prefix}-{secrets.token_hex(4).upper()}"
+    # 16 bytes (128 bits) — the previous 4 bytes (32 bits, ~4.3B values) was
+    # brute-forceable in bulk against an unthrottled endpoint (see PAY-01,
+    # SEC-03). This reference is also returned to the payer in the 201
+    # response, so it must never be the only thing standing between an
+    # attacker and a forged callback — see the checkout_request_id handling
+    # below for why the callback path no longer trusts it for that purpose.
+    return f"{prefix}-{secrets.token_hex(16).upper()}"
 
 
 def _get_active_project(project_id: UUID, db: Session) -> Project:
@@ -42,35 +50,40 @@ def _assert_chama_member(project: Project, user: User, db: Session) -> None:
         raise HTTPException(status_code=403, detail="You must be a Chama member to contribute")
 
 
-def _apply_callback_result(db: Session, contribution: Contribution, result: dict) -> None:
-    """Update contribution from a payment callback. Idempotent for success."""
+def _verify_callback_token(token: str, expected: str) -> None:
+    """Reject any callback that doesn't present the configured path secret.
+
+    A plain public route with no verification means the only thing
+    standing between an attacker and a forged "payment succeeded" event is
+    knowledge of a contribution's reference — and that reference is
+    returned to the payer in the 201 response, so it's never actually
+    secret (see PAY-01). 404 rather than 401/403: an unauthenticated
+    scanner gets no signal that a callback endpoint exists here at all.
+    """
+    if not expected or not hmac.compare_digest(token, expected):
+        raise HTTPException(status_code=404)
+
+
+def _settle_from_verified_status(
+    db: Session, contribution: Contribution, verified_success: bool, receipt: str | None,
+) -> None:
+    """Credit or fail a contribution from an authenticated provider status
+    check — never from the callback body itself, which is unauthenticated
+    and forgeable. The amount credited is always `contribution.amount`
+    (what we initiated the push for), never a value read from the callback
+    body (see PAY-01, FIN-01).
+    """
     if contribution.status == ContributionStatus.SUCCESS:
         return
-
-    if contribution.status not in (
-        ContributionStatus.PENDING,
-        ContributionStatus.FAILED,
-    ):
+    if contribution.status not in (ContributionStatus.PENDING, ContributionStatus.FAILED):
         return
 
-    if result["success"]:
-        callback_amount = result.get("amount")
-        # Both sides are exact Decimal now (FIN-01) — no float tolerance needed.
-        if callback_amount is not None and callback_amount != contribution.amount:
-            contribution.status = ContributionStatus.FAILED
-            contribution.failure_reason = "Callback amount mismatch"
-            return
-
-        # Ledger-backed, atomic and idempotent — see FIN-02. This both
-        # appends the ledger entry and updates raised_amount with a single
-        # SQL UPDATE, so two concurrent callbacks can never lose one
-        # another's credit the way a Python-side `+=` could.
-        ledger_service.credit_contribution(
-            db, contribution, result.get("receipt"), datetime.now(timezone.utc)
-        )
+    if verified_success:
+        # Ledger-backed, atomic and idempotent — see FIN-02.
+        ledger_service.credit_contribution(db, contribution, receipt, datetime.now(timezone.utc))
     else:
         contribution.status = ContributionStatus.FAILED
-        contribution.failure_reason = result.get("failure_reason")
+        contribution.failure_reason = "Provider did not confirm a completed payment"
 
 
 @router.post("/contributions/mpesa", response_model=ContributionResponse, status_code=201)
@@ -97,17 +110,23 @@ async def contribute_mpesa(
     db.refresh(contribution)
 
     try:
-        await mpesa.stk_push(
+        result = await mpesa.stk_push(
             phone=payload.phone,
             amount=payload.amount,
             reference=reference,
             description=f"Changa: {project.title[:20]}",
         )
-    except Exception as e:
+    except Exception:
         contribution.status = ContributionStatus.FAILED
         contribution.failure_reason = "Payment provider error"
         db.commit()
         raise HTTPException(status_code=502, detail="M-Pesa request failed. Please try again.")
+
+    # The handle used to query Daraja server-to-server for this push's
+    # authoritative status — never returned to the client (see PAY-01).
+    contribution.checkout_request_id = result.get("CheckoutRequestID")
+    db.commit()
+    db.refresh(contribution)
 
     return ContributionResponse.model_validate(contribution)
 
@@ -141,7 +160,7 @@ async def contribute_airtel(
             amount=payload.amount,
             reference=reference,
         )
-    except Exception as e:
+    except Exception:
         contribution.status = ContributionStatus.FAILED
         contribution.failure_reason = "Payment provider error"
         db.commit()
@@ -190,41 +209,89 @@ def my_contributions(
     return [ContributionResponse.model_validate(c) for c in contributions]
 
 
-@router.post("/payments/mpesa/callback")
-async def mpesa_callback(payload: MpesaCallbackRequest, db: Session = Depends(get_db)):
-    result = mpesa.parse_callback(payload.model_dump())
+@router.post("/payments/mpesa/callback/{token}", include_in_schema=False)
+async def mpesa_callback(token: str, request: Request, db: Session = Depends(get_db)):
+    _verify_callback_token(token, settings.MPESA_CALLBACK_TOKEN)
+    raw = await request.body()
 
-    stk_callback = payload.Body.get("stkCallback", {})
-    items = {
-        item["Name"]: item.get("Value")
-        for item in stk_callback.get("CallbackMetadata", {}).get("Item", [])
-    }
-    reference = items.get("AccountReference") or stk_callback.get("CheckoutRequestID")
+    try:
+        stk_callback = json.loads(raw or b"{}").get("Body", {}).get("stkCallback", {})
+    except json.JSONDecodeError:
+        stk_callback = {}
+    checkout_request_id = stk_callback.get("CheckoutRequestID")
 
-    if not reference:
+    # Persist the raw payload unconditionally, before any decision is made —
+    # forensics first, logic second (see PAY-01).
+    event = ProviderEvent(
+        provider=PaymentProvider.MPESA,
+        reference=checkout_request_id,
+        raw_body=raw.decode("utf-8", errors="replace"),
+    )
+    db.add(event)
+
+    if not checkout_request_id:
+        event.rejection_reason = "missing_checkout_request_id"
+        db.commit()
         return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
-    contribution = db.query(Contribution).filter(Contribution.reference == reference).first()
+    contribution = db.query(Contribution).filter(
+        Contribution.checkout_request_id == checkout_request_id
+    ).first()
     if not contribution:
+        event.rejection_reason = "unknown_checkout_request_id"
+        db.commit()
         return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
-    _apply_callback_result(db, contribution, result)
+    # The callback body is only ever a hint that *something* happened for
+    # this CheckoutRequestID — Safaricom's own query endpoint, called with
+    # our own credentials, is the only source of truth for whether it
+    # actually succeeded.
+    verified = await mpesa.query_stk_status(checkout_request_id)
+    event.verified = verified["success"]
+    if not verified["success"]:
+        event.rejection_reason = verified.get("reason") or "provider_did_not_confirm"
+
+    _settle_from_verified_status(db, contribution, verified["success"], receipt=None)
     db.commit()
     return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
 
-@router.post("/payments/airtel/callback")
-async def airtel_callback(payload: AirtelCallbackRequest, db: Session = Depends(get_db)):
-    result = airtel.parse_callback(payload.model_dump())
-    reference = payload.transaction.get("id") if payload.transaction else None
+@router.post("/payments/airtel/callback/{token}", include_in_schema=False)
+async def airtel_callback(token: str, request: Request, db: Session = Depends(get_db)):
+    _verify_callback_token(token, settings.AIRTEL_CALLBACK_TOKEN)
+    raw = await request.body()
+
+    try:
+        body = json.loads(raw or b"{}")
+    except json.JSONDecodeError:
+        body = {}
+    reference = (body.get("transaction") or {}).get("id")
+
+    event = ProviderEvent(
+        provider=PaymentProvider.AIRTEL,
+        reference=reference,
+        raw_body=raw.decode("utf-8", errors="replace"),
+    )
+    db.add(event)
 
     if not reference:
+        event.rejection_reason = "missing_reference"
+        db.commit()
         return {"status": "ok"}
 
     contribution = db.query(Contribution).filter(Contribution.reference == reference).first()
     if not contribution:
+        event.rejection_reason = "unknown_reference"
+        db.commit()
         return {"status": "ok"}
 
-    _apply_callback_result(db, contribution, result)
+    # As with M-Pesa: the callback body is a hint, never the source of
+    # truth. Query Airtel directly for this reference's real status.
+    verified = await airtel.query_transaction_status(reference)
+    event.verified = verified["success"]
+    if not verified["success"]:
+        event.rejection_reason = "provider_did_not_confirm"
+
+    _settle_from_verified_status(db, contribution, verified["success"], verified.get("receipt"))
     db.commit()
     return {"status": "ok"}

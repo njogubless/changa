@@ -237,6 +237,12 @@ class Contribution(Base):
     phone              = Column(String(20), nullable=False)
     reference          = Column(String(100), unique=True, index=True, nullable=False)
     provider_reference = Column(String(100), nullable=True)
+    # Daraja's CheckoutRequestID — the handle used to query M-Pesa
+    # server-to-server for the authoritative status of this push. Never
+    # exposed in ContributionResponse: unlike `reference`, this value must
+    # not be knowable to the payer, or it becomes another forgeable lookup
+    # key for the callback (see PAY-01).
+    checkout_request_id = Column(String(100), nullable=True, index=True)
     status             = Column(SAEnum(ContributionStatus), nullable=False, default=ContributionStatus.PENDING)
     failure_reason     = Column(Text, nullable=True)
     initiated_at       = Column(DateTime(timezone=True), default=utcnow)
@@ -279,6 +285,25 @@ class LedgerEntry(Base):
         Index("ix_ledger_project_created", "project_id", "created_at"),
     )
 
+
+class ProviderEvent(Base):
+    """Every raw payment-provider callback, persisted before any logic runs.
+
+    The callback body is unauthenticated and forgeable (see PAY-01) — it is
+    treated purely as a signal to go verify with the provider, never as a
+    source of truth. Persisting the raw body first, unconditionally, means
+    a forged attempt is forensically visible even though it is never acted
+    on.
+    """
+    __tablename__ = "provider_events"
+
+    id                = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    provider          = Column(SAEnum(PaymentProvider), nullable=False)
+    reference         = Column(String(100), nullable=True, index=True)
+    raw_body          = Column(Text, nullable=False)
+    verified          = Column(Boolean, nullable=False, default=False)
+    rejection_reason  = Column(String(100), nullable=True)
+    received_at       = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
 
