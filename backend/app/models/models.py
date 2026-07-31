@@ -256,6 +256,12 @@ class Contribution(Base):
     checkout_request_id = Column(String(100), nullable=True, index=True)
     status             = Column(SAEnum(ContributionStatus), nullable=False, default=ContributionStatus.PENDING)
     failure_reason     = Column(Text, nullable=True)
+    # How many times the outbox worker has attempted to push this to the
+    # provider, and how many times the reconciliation sweep has queried its
+    # status without a terminal answer — see PAY-03. Both are bounded so a
+    # stuck contribution escalates instead of being polled forever.
+    push_attempts      = Column(Integer, nullable=False, default=0)
+    reconcile_attempts = Column(Integer, nullable=False, default=0)
     initiated_at       = Column(DateTime(timezone=True), default=utcnow)
     completed_at       = Column(DateTime(timezone=True), nullable=True)
 
@@ -315,6 +321,43 @@ class ProviderEvent(Base):
     verified          = Column(Boolean, nullable=False, default=False)
     rejection_reason  = Column(String(100), nullable=True)
     received_at       = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+
+class OutboxStatus(str, enum.Enum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    DONE = "done"
+    FAILED = "failed"
+
+
+class OutboxMessage(Base):
+    """Transactional outbox — decouples the provider STK push from the
+    request/response cycle.
+
+    Before this, the handler committed the contribution row and then
+    awaited the STK push inline: if the process died between the commit
+    and the push, the contribution was PENDING forever with no prompt ever
+    sent; if the push actually succeeded but the response was lost, the
+    code marked the contribution FAILED while the customer's phone showed
+    a live PIN prompt. Writing this row in the *same* transaction as the
+    contribution insert, and having a worker drain it asynchronously,
+    means the two can never be split by a mid-flight crash — either both
+    exist or neither does. See PAY-03.
+    """
+    __tablename__ = "outbox_messages"
+
+    id           = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    topic        = Column(String(50), nullable=False)
+    payload      = Column(Text, nullable=False)  # JSON string
+    status       = Column(SAEnum(OutboxStatus), nullable=False, default=OutboxStatus.PENDING)
+    attempts     = Column(Integer, nullable=False, default=0)
+    last_error   = Column(String(255), nullable=True)
+    created_at   = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    processed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_outbox_status_created", "status", "created_at"),
+    )
 
 
 

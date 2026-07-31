@@ -11,7 +11,7 @@ from app.core.config import settings
 from app.core.security import get_current_user
 from app.models.models import (
     User, Project, Contribution, ContributionStatus, PaymentProvider,
-    ChamaMember, ProviderEvent,
+    ChamaMember, ProviderEvent, OutboxMessage,
 )
 from app.schemas.projects import (
     MpesaContributeRequest, AirtelContributeRequest,
@@ -86,7 +86,7 @@ def _settle_from_verified_status(
         contribution.failure_reason = "Provider did not confirm a completed payment"
 
 
-@router.post("/contributions/mpesa", response_model=ContributionResponse, status_code=201)
+@router.post("/contributions/mpesa", response_model=ContributionResponse, status_code=202)
 async def contribute_mpesa(
     payload: MpesaContributeRequest,
     db: Session = Depends(get_db),
@@ -96,6 +96,13 @@ async def contribute_mpesa(
     _assert_chama_member(project, current_user, db)
     reference = _generate_reference("MPESA")
 
+    # The handler does one thing: commit the contribution and an outbox
+    # row in a single transaction, then return. A background worker drains
+    # the outbox and performs the actual STK push (see PAY-03) — this
+    # means a process death between "contribution recorded" and "push
+    # sent" can no longer strand the contribution PENDING forever with no
+    # prompt ever having been sent, and a slow Daraja call never blocks
+    # this request for up to 15 seconds.
     contribution = Contribution(
         project_id=project.id,
         user_id=current_user.id,
@@ -106,32 +113,18 @@ async def contribute_mpesa(
         status=ContributionStatus.PENDING,
     )
     db.add(contribution)
-    db.commit()
-    db.refresh(contribution)
-
-    try:
-        result = await mpesa.stk_push(
-            phone=payload.phone,
-            amount=payload.amount,
-            reference=reference,
-            description=f"Changa: {project.title[:20]}",
-        )
-    except Exception:
-        contribution.status = ContributionStatus.FAILED
-        contribution.failure_reason = "Payment provider error"
-        db.commit()
-        raise HTTPException(status_code=502, detail="M-Pesa request failed. Please try again.")
-
-    # The handle used to query Daraja server-to-server for this push's
-    # authoritative status — never returned to the client (see PAY-01).
-    contribution.checkout_request_id = result.get("CheckoutRequestID")
+    db.flush()
+    db.add(OutboxMessage(
+        topic="payment.initiate.mpesa",
+        payload=json.dumps({"contribution_id": str(contribution.id)}),
+    ))
     db.commit()
     db.refresh(contribution)
 
     return ContributionResponse.model_validate(contribution)
 
 
-@router.post("/contributions/airtel", response_model=ContributionResponse, status_code=201)
+@router.post("/contributions/airtel", response_model=ContributionResponse, status_code=202)
 async def contribute_airtel(
     payload: AirtelContributeRequest,
     db: Session = Depends(get_db),
@@ -151,20 +144,13 @@ async def contribute_airtel(
         status=ContributionStatus.PENDING,
     )
     db.add(contribution)
+    db.flush()
+    db.add(OutboxMessage(
+        topic="payment.initiate.airtel",
+        payload=json.dumps({"contribution_id": str(contribution.id)}),
+    ))
     db.commit()
     db.refresh(contribution)
-
-    try:
-        await airtel.initiate_payment(
-            phone=payload.phone,
-            amount=payload.amount,
-            reference=reference,
-        )
-    except Exception:
-        contribution.status = ContributionStatus.FAILED
-        contribution.failure_reason = "Payment provider error"
-        db.commit()
-        raise HTTPException(status_code=502, detail="Airtel request failed. Please try again.")
 
     return ContributionResponse.model_validate(contribution)
 

@@ -1,3 +1,4 @@
+import asyncio
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +7,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.database import verify_schema_at_head
 from app.routers import auth, projects, payments, chamas, budgets
+from app.workers import payment_worker
 
 
 @asynccontextmanager
@@ -15,7 +17,22 @@ async def lifespan(app: FastAPI):
     # docs/Changa_Engineering_audit.md, DB-01.
     if os.environ.get("PYTEST_RUNNING") != "1":
         verify_schema_at_head()
+
+    # Drains the payment outbox and sweeps stale PENDING contributions —
+    # see PAY-03. Skipped under pytest so the test suite doesn't spin up a
+    # background loop against a database it's about to drop.
+    worker_task = None
+    if os.environ.get("PYTEST_RUNNING") != "1":
+        worker_task = asyncio.create_task(payment_worker.run_forever())
+
     yield
+
+    if worker_task is not None:
+        worker_task.cancel()
+        try:
+            await worker_task
+        except asyncio.CancelledError:
+            pass
 
 
 _docs_url = "/docs" if settings.DEBUG else None
