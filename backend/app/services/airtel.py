@@ -1,5 +1,7 @@
 import httpx
+from decimal import Decimal
 from app.core.config import settings
+from app.core.types import to_money, is_whole_currency_unit, ProviderPrecisionError
 
 
 async def get_access_token() -> str:
@@ -18,8 +20,11 @@ async def get_access_token() -> str:
         return response.json()["access_token"]
 
 
-async def initiate_payment(phone: str, amount: float, reference: str) -> dict:
+async def initiate_payment(phone: str, amount: Decimal, reference: str) -> dict:
     """Initiate Airtel Money payment."""
+    if not is_whole_currency_unit(amount):
+        raise ProviderPrecisionError("Airtel Money accepts whole shillings only")
+
     token = await get_access_token()
 
     
@@ -58,7 +63,7 @@ def parse_callback(body: dict) -> dict:
     if status_code == "TS":
         return {
             "success": True,
-            "amount": float(transaction.get("amount", 0)),
+            "amount": to_money(transaction.get("amount", 0)),
             "receipt": transaction.get("airtel_money_id"),
             "phone": transaction.get("msisdn", ""),
             "failure_reason": None,

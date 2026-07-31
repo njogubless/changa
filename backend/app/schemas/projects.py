@@ -1,7 +1,9 @@
+from decimal import Decimal
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
+from app.core.types import to_money
 from app.models.models import (
     ProjectStatus, PaymentAccountType,
     ContributionStatus, PaymentProvider,
@@ -13,7 +15,7 @@ from app.models.models import (
 class ProjectCreateRequest(BaseModel):
     title: str
     description: Optional[str] = None
-    target_amount: float
+    target_amount: Decimal
     is_anonymous: bool = False
     deadline: Optional[datetime] = None
     cover_image_url: Optional[str] = None
@@ -26,8 +28,9 @@ class ProjectCreateRequest(BaseModel):
 
     @field_validator("target_amount")
     @classmethod
-    def validate_amount(cls, v: float) -> float:
-        if v < 100:
+    def validate_amount(cls, v: Decimal) -> Decimal:
+        v = to_money(v)
+        if v < Decimal("100"):
             raise ValueError("Target amount must be at least KES 100")
         return v
 
@@ -52,7 +55,7 @@ class ProjectCreateRequest(BaseModel):
 class ProjectUpdateRequest(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    target_amount: Optional[float] = None
+    target_amount: Optional[Decimal] = None
     is_anonymous: Optional[bool] = None
     deadline: Optional[datetime] = None
     cover_image_url: Optional[str] = None
@@ -62,6 +65,11 @@ class ProjectUpdateRequest(BaseModel):
     payment_name: Optional[str] = None
     account_reference: Optional[str] = None
 
+    @field_validator("target_amount")
+    @classmethod
+    def validate_amount(cls, v: Optional[Decimal]) -> Optional[Decimal]:
+        return to_money(v) if v is not None else v
+
 
 class ProjectResponse(BaseModel):
     id: UUID
@@ -70,14 +78,14 @@ class ProjectResponse(BaseModel):
     title: str
     description: Optional[str]
     cover_image_url: Optional[str]
-    target_amount: float
-    raised_amount: float
+    target_amount: Decimal
+    raised_amount: Decimal
     currency: str
     status: ProjectStatus
     is_anonymous: bool
     deadline: Optional[datetime]
     percentage_funded: float
-    deficit: float
+    deficit: Decimal
     is_funded: bool
     contributor_count: int
 
@@ -103,16 +111,23 @@ class ProjectListResponse(BaseModel):
 
 class MpesaContributeRequest(BaseModel):
     project_id: UUID
-    amount: float
+    amount: Decimal
     phone: str
 
     @field_validator("amount")
     @classmethod
-    def validate_amount(cls, v: float) -> float:
+    def validate_amount(cls, v: Decimal) -> Decimal:
+        v = to_money(v)
         if v < 1:
             raise ValueError("Amount must be at least KES 1")
         if v > 300000:
             raise ValueError("Amount cannot exceed KES 300,000 per transaction")
+        if not v == v.to_integral_value():
+            # Daraja's STK Push only accepts whole shillings. Reject at the
+            # boundary rather than silently truncating cents (the previous
+            # behaviour, which requested less from M-Pesa than the ledger
+            # recorded — see FIN-01).
+            raise ValueError("M-Pesa contributions must be a whole number of shillings")
         return v
 
     @field_validator("phone")
@@ -127,21 +142,24 @@ class MpesaContributeRequest(BaseModel):
 
 class AirtelContributeRequest(BaseModel):
     project_id: UUID
-    amount: float
+    amount: Decimal
     phone: str
 
     @field_validator("amount")
     @classmethod
-    def validate_amount(cls, v: float) -> float:
+    def validate_amount(cls, v: Decimal) -> Decimal:
+        v = to_money(v)
         if v < 1:
             raise ValueError("Amount must be at least KES 1")
+        if not v == v.to_integral_value():
+            raise ValueError("Airtel Money contributions must be a whole number of shillings")
         return v
 
 
 class ContributionResponse(BaseModel):
     id: UUID
     project_id: UUID
-    amount: float
+    amount: Decimal
     currency: str
     provider: PaymentProvider
     phone: str
@@ -159,7 +177,7 @@ class ContributionStatusResponse(BaseModel):
     reference: str
     status: ContributionStatus
     provider_reference: Optional[str]
-    amount: float
+    amount: Decimal
     completed_at: Optional[datetime]
 
 

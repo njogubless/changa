@@ -1,7 +1,9 @@
 import base64
 import httpx
+from decimal import Decimal
 from datetime import datetime, timezone
 from app.core.config import settings
+from app.core.types import to_money, is_whole_currency_unit, ProviderPrecisionError
 
 
 def _get_timestamp() -> str:
@@ -28,8 +30,15 @@ async def get_access_token() -> str:
         return response.json()["access_token"]
 
 
-async def stk_push(phone: str, amount: float, reference: str, description: str = "Changa Contribution") -> dict:
+async def stk_push(phone: str, amount: Decimal, reference: str, description: str = "Changa Contribution") -> dict:
     """Initiate M-Pesa STK Push. Returns Daraja API response."""
+    # Daraja accepts whole KES only. The schema layer (MpesaContributeRequest)
+    # already rejects fractional amounts, but never silently truncate cents
+    # here even so — that used to request less from M-Pesa than the ledger
+    # recorded, guaranteeing a permanent discrepancy (FIN-01).
+    if not is_whole_currency_unit(amount):
+        raise ProviderPrecisionError("M-Pesa STK Push accepts whole shillings only")
+
     token = await get_access_token()
     timestamp = _get_timestamp()
 
@@ -82,7 +91,7 @@ def parse_callback(body: dict) -> dict:
 
     return {
         "success": True,
-        "amount": float(items.get("Amount", 0)),
+        "amount": to_money(items.get("Amount", 0)),
         "receipt": items.get("MpesaReceiptNumber"),
         "phone": str(items.get("PhoneNumber", "")),
         "failure_reason": None,

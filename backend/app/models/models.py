@@ -1,9 +1,10 @@
 import uuid
 import secrets
+from decimal import Decimal
 from datetime import datetime, timezone
 from sqlalchemy import (
     Column, String, Boolean, DateTime,
-    Float, Text, ForeignKey, Integer,
+    Text, ForeignKey, Integer,
     Enum as SAEnum, UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
@@ -11,6 +12,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import enum
 
 from app.database import Base
+from app.core.types import MoneyColumn, ZERO
 
 
 def utcnow():
@@ -176,8 +178,8 @@ class Project(Base):
     title           = Column(String(255), nullable=False)
     description     = Column(Text, nullable=True)
     cover_image_url = Column(String(500), nullable=True)
-    target_amount   = Column(Float, nullable=False)
-    raised_amount   = Column(Float, nullable=False, default=0.0)
+    target_amount   = Column(MoneyColumn, nullable=False)
+    raised_amount   = Column(MoneyColumn, nullable=False, default=ZERO)
     currency        = Column(String(3), nullable=False, default="KES")
     status          = Column(SAEnum(ProjectStatus), nullable=False, default=ProjectStatus.ACTIVE)
     is_anonymous    = Column(Boolean, nullable=False, default=False)
@@ -197,11 +199,12 @@ class Project(Base):
     def percentage_funded(self) -> float:
         if self.target_amount == 0:
             return 0.0
-        return round((self.raised_amount / self.target_amount) * 100, 2)
+        # A display ratio, not a stored monetary value — float here is fine.
+        return round(float(self.raised_amount / self.target_amount) * 100, 2)
 
     @property
-    def deficit(self) -> float:
-        return max(0.0, self.target_amount - self.raised_amount)
+    def deficit(self) -> Decimal:
+        return max(ZERO, self.target_amount - self.raised_amount)
 
     @property
     def is_funded(self) -> bool:
@@ -221,7 +224,7 @@ class Contribution(Base):
     id                 = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     project_id         = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True)
     user_id            = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    amount             = Column(Float, nullable=False)
+    amount             = Column(MoneyColumn, nullable=False)
     currency           = Column(String(3), nullable=False, default="KES")
     provider           = Column(SAEnum(PaymentProvider), nullable=False)
     phone              = Column(String(20), nullable=False)
@@ -246,7 +249,7 @@ class Budget(Base):
     user_id         = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title           = Column(String(255), nullable=False)
     type            = Column(SAEnum(BudgetType), nullable=False, default=BudgetType.PERSONAL)
-    total_income    = Column(Float, nullable=False, default=0.0)
+    total_income    = Column(MoneyColumn, nullable=False, default=ZERO)
     currency        = Column(String(3), nullable=False, default="KES")
     event_date      = Column(DateTime(timezone=True), nullable=True)
 
@@ -268,22 +271,22 @@ class Budget(Base):
                               order_by="BudgetCategory.sort_order")
 
     @property
-    def total_allocated(self) -> float:
-        return sum(c.allocated_amount for c in self.categories)
+    def total_allocated(self) -> Decimal:
+        return sum((c.allocated_amount for c in self.categories), ZERO)
 
     @property
-    def total_spent(self) -> float:
-        return sum(c.spent_amount for c in self.categories)
+    def total_spent(self) -> Decimal:
+        return sum((c.spent_amount for c in self.categories), ZERO)
 
     @property
-    def unallocated(self) -> float:
+    def unallocated(self) -> Decimal:
         return self.total_income - self.total_allocated
 
     @property
     def overall_progress(self) -> float:
         if self.total_allocated == 0:
             return 0.0
-        return round((self.total_spent / self.total_allocated), 4)
+        return round(float(self.total_spent / self.total_allocated), 4)
 
 
 class BudgetCategory(Base):
@@ -294,8 +297,8 @@ class BudgetCategory(Base):
     budget_id        = Column(UUID(as_uuid=True), ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False, index=True)
     category         = Column(SAEnum(BudgetCategoryType), nullable=False, default=BudgetCategoryType.OTHER)
     custom_label     = Column(String(255), nullable=True)   # override the default category name
-    allocated_amount = Column(Float, nullable=False, default=0.0)
-    spent_amount     = Column(Float, nullable=False, default=0.0)   # updated by expenses
+    allocated_amount = Column(MoneyColumn, nullable=False, default=ZERO)
+    spent_amount     = Column(MoneyColumn, nullable=False, default=ZERO)   # updated by expenses
     sort_order       = Column(Integer, nullable=False, default=0)
     created_at       = Column(DateTime(timezone=True), default=utcnow)
 
@@ -310,14 +313,14 @@ class BudgetCategory(Base):
         return self.custom_label or self.category.value.replace("_", " ").title()
 
     @property
-    def remaining(self) -> float:
+    def remaining(self) -> Decimal:
         return self.allocated_amount - self.spent_amount
 
     @property
     def progress(self) -> float:
         if self.allocated_amount == 0:
             return 0.0
-        return round((self.spent_amount / self.allocated_amount), 4)
+        return round(float(self.spent_amount / self.allocated_amount), 4)
 
     @property
     def is_over_budget(self) -> bool:
@@ -331,7 +334,7 @@ class BudgetExpense(Base):
     id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     category_id = Column(UUID(as_uuid=True), ForeignKey("budget_categories.id", ondelete="CASCADE"), nullable=False, index=True)
     description = Column(String(500), nullable=False)
-    amount      = Column(Float, nullable=False)
+    amount      = Column(MoneyColumn, nullable=False)
     date        = Column(DateTime(timezone=True), nullable=False, default=utcnow)
     created_at  = Column(DateTime(timezone=True), default=utcnow)
 

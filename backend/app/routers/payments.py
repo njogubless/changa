@@ -55,7 +55,8 @@ def _apply_callback_result(contribution: Contribution, result: dict) -> None:
 
     if result["success"]:
         callback_amount = result.get("amount")
-        if callback_amount is not None and abs(callback_amount - contribution.amount) > 0.01:
+        # Both sides are exact Decimal now (FIN-01) — no float tolerance needed.
+        if callback_amount is not None and callback_amount != contribution.amount:
             contribution.status = ContributionStatus.FAILED
             contribution.failure_reason = "Callback amount mismatch"
             return

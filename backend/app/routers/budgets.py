@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 
 from app.database import get_db
 from app.core.security import get_current_user
+from app.core.types import ZERO
 from app.models.models import (
     User, Budget, BudgetCategory, BudgetExpense, utcnow,
 )
@@ -212,7 +213,6 @@ def add_expense(
     )
     db.add(expense)
 
-    
     category.spent_amount += payload.amount
 
     db.commit()
@@ -241,8 +241,7 @@ def delete_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    
-    category.spent_amount = max(0.0, category.spent_amount - expense.amount)
+    category.spent_amount = max(ZERO, category.spent_amount - expense.amount)
     db.delete(expense)
     db.commit()
 
@@ -261,10 +260,14 @@ def get_budget_summary(
         "id": str(budget.id),
         "title": budget.title,
         "type": budget.type,
-        "total_income": budget.total_income,
-        "total_allocated": budget.total_allocated,
-        "total_spent": budget.total_spent,
-        "unallocated": budget.unallocated,
+        # Cast Decimal -> str explicitly: this endpoint returns a raw dict
+        # rather than a response_model, and FastAPI's jsonable_encoder
+        # converts a bare Decimal to float — exactly the representation
+        # error FIN-01 exists to eliminate.
+        "total_income": str(budget.total_income),
+        "total_allocated": str(budget.total_allocated),
+        "total_spent": str(budget.total_spent),
+        "unallocated": str(budget.unallocated),
         "overall_progress": budget.overall_progress,
         "category_count": len(budget.categories),
         "is_over_budget": budget.total_spent > budget.total_allocated,
