@@ -227,6 +227,17 @@ class Project(Base):
 
 class Contribution(Base):
     __tablename__ = "contributions"
+    __table_args__ = (
+        # One M-Pesa/Airtel receipt can only ever settle one contribution.
+        # NULLs (a contribution with no receipt yet) don't collide with
+        # each other under Postgres unique-constraint semantics, so this
+        # only bites once a receipt is actually recorded twice — which
+        # should be structurally impossible, and this constraint is what
+        # makes it actually impossible rather than merely unlikely.
+        UniqueConstraint("provider", "provider_reference", name="uq_contribution_provider_receipt"),
+        CheckConstraint("amount > 0", name="ck_contribution_amount_positive"),
+        Index("ix_contributions_project_status", "project_id", "status"),
+    )
 
     id                 = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     project_id         = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True)

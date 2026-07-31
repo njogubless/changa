@@ -251,7 +251,17 @@ async def mpesa_callback(token: str, request: Request, db: Session = Depends(get
     if not verified["success"]:
         event.rejection_reason = verified.get("reason") or "provider_did_not_confirm"
 
-    _settle_from_verified_status(db, contribution, verified["success"], receipt=None)
+    # The receipt number is only ever used as a display/support-reference
+    # value below, never to decide whether to credit anything — that
+    # decision rests solely on `verified["success"]" above. A forged
+    # receipt string here cannot cause a false credit.
+    items = {
+        item.get("Name"): item.get("Value")
+        for item in stk_callback.get("CallbackMetadata", {}).get("Item", [])
+    }
+    receipt_hint = items.get("MpesaReceiptNumber")
+
+    _settle_from_verified_status(db, contribution, verified["success"], receipt=receipt_hint)
     db.commit()
     return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
