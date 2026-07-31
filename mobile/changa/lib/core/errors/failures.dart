@@ -32,3 +32,12 @@ class NotFoundFailure extends Failure {
 class UnexpectedFailure extends Failure {
   const UnexpectedFailure([super.message = 'Something went wrong']);
 }
+
+/// Extract a user-facing message from repository/notifier errors.
+String failureMessage(Object error) {
+  if (error is Failure) return error.message;
+  final raw = error.toString();
+  if (raw.contains('AuthFailure')) return 'Invalid email or password';
+  if (raw.contains('NetworkFailure')) return 'No internet connection';
+  return 'Something went wrong. Please try again.';
+}

@@ -1,14 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, joinedload
 from uuid import UUID
+import math
 
 from app.database import get_db
 from app.core.security import get_current_user
+from app.core.types import ZERO
 from app.models.models import (
-    User, Project, ChamaMember, ContributionStatus,
+    User, Project, ChamaMember, ContributionStatus, Contribution,
 )
 from app.schemas.projects import (
-    ProjectUpdateRequest, ProjectResponse,
+    ProjectUpdateRequest, ProjectResponse, ProjectListResponse,
 )
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -38,6 +40,33 @@ def _assert_owner(project: Project, user: User) -> None:
         raise HTTPException(status_code=403, detail="Only the project owner can do this")
 
 
+@router.get("/mine", response_model=ProjectListResponse)
+def list_my_projects(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """All projects across chamas the current user belongs to."""
+    chama_ids = (
+        db.query(ChamaMember.chama_id)
+        .filter(ChamaMember.user_id == current_user.id)
+        .subquery()
+    )
+    query = db.query(Project).filter(Project.chama_id.in_(chama_ids))
+    total = query.count()
+    projects = (
+        query.order_by(Project.created_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return ProjectListResponse(
+        items=[ProjectResponse.model_validate(p) for p in projects],
+        total=total,
+        page=page,
+        pages=math.ceil(total / page_size) if total else 1,
+    )
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -98,17 +127,22 @@ def get_contributors(
     project = _get_project_or_404(project_id, db)
     _assert_chama_member(project, current_user, db)
 
-    successful = [
-        c for c in project.contributions
-        if c.status == ContributionStatus.SUCCESS
-    ]
-    total_raised = sum(c.amount for c in successful)
+    successful = (
+        db.query(Contribution)
+        .options(joinedload(Contribution.user))
+        .filter(
+            Contribution.project_id == project_id,
+            Contribution.status == ContributionStatus.SUCCESS,
+        )
+        .all()
+    )
+    total_raised = sum((c.amount for c in successful), ZERO)
 
     contributors: dict = {}
     for c in successful:
         uid = str(c.user_id)
         if uid not in contributors:
-            contributors[uid] = {"user_id": uid, "total": 0.0}
+            contributors[uid] = {"user_id": uid, "total": ZERO}
             if not project.is_anonymous:
                 contributors[uid]["full_name"] = c.user.full_name
         contributors[uid]["total"] += c.amount
@@ -116,7 +150,7 @@ def get_contributors(
     result = []
     for uid, data in contributors.items():
         data["percentage"] = (
-            round((data["total"] / total_raised) * 100, 2) if total_raised else 0
+            round(float(data["total"] / total_raised) * 100, 2) if total_raised else 0
         )
         result.append(data)
 

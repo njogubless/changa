@@ -1,7 +1,9 @@
 import base64
 import httpx
+from decimal import Decimal
 from datetime import datetime, timezone
 from app.core.config import settings
+from app.core.types import to_money, is_whole_currency_unit, ProviderPrecisionError
 
 
 def _get_timestamp() -> str:
@@ -28,8 +30,15 @@ async def get_access_token() -> str:
         return response.json()["access_token"]
 
 
-async def stk_push(phone: str, amount: float, reference: str, description: str = "Changa Contribution") -> dict:
+async def stk_push(phone: str, amount: Decimal, reference: str, description: str = "Changa Contribution") -> dict:
     """Initiate M-Pesa STK Push. Returns Daraja API response."""
+    # Daraja accepts whole KES only. The schema layer (MpesaContributeRequest)
+    # already rejects fractional amounts, but never silently truncate cents
+    # here even so — that used to request less from M-Pesa than the ledger
+    # recorded, guaranteeing a permanent discrepancy (FIN-01).
+    if not is_whole_currency_unit(amount):
+        raise ProviderPrecisionError("M-Pesa STK Push accepts whole shillings only")
+
     token = await get_access_token()
     timestamp = _get_timestamp()
 
@@ -61,6 +70,50 @@ async def stk_push(phone: str, amount: float, reference: str, description: str =
         return response.json()
 
 
+async def query_stk_status(checkout_request_id: str) -> dict:
+    """Ask Safaricom directly whether this specific push completed.
+
+    The push *callback* is an unauthenticated, unsigned POST to a public
+    URL — anyone who can reach it can forge a success body for any
+    contribution (see PAY-01). This query is the authoritative check: it
+    requires our own Daraja credentials to call, so its answer cannot be
+    forged by a third party the way the callback body can.
+
+    Note: unlike the callback, Daraja's stkpushquery response does not
+    reliably include the paid amount or receipt number across API
+    versions. That is fine here — the amount ever credited is always the
+    amount *we* initiated the push for (see ledger_service.credit_
+    contribution), never a value read from an unauthenticated source, so
+    the query only needs to answer "did this specific CheckoutRequestID
+    actually complete".
+    """
+    token = await get_access_token()
+    timestamp = _get_timestamp()
+    payload = {
+        "BusinessShortCode": settings.MPESA_SHORTCODE,
+        "Password": _get_password(timestamp),
+        "Timestamp": timestamp,
+        "CheckoutRequestID": checkout_request_id,
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{settings.MPESA_BASE_URL}/mpesa/stkpushquery/v1/query",
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+            timeout=15.0,
+        )
+
+    if response.status_code != 200:
+        return {"success": False, "reason": f"query returned HTTP {response.status_code}"}
+
+    body = response.json()
+    success = str(body.get("ResultCode")) == "0"
+    return {"success": success, "reason": body.get("ResultDesc")}
+
+
 def parse_callback(body: dict) -> dict:
     """
     Parse Safaricom STK Push callback body.
@@ -82,7 +135,7 @@ def parse_callback(body: dict) -> dict:
 
     return {
         "success": True,
-        "amount": float(items.get("Amount", 0)),
+        "amount": to_money(items.get("Amount", 0)),
         "receipt": items.get("MpesaReceiptNumber"),
         "phone": str(items.get("PhoneNumber", "")),
         "failure_reason": None,

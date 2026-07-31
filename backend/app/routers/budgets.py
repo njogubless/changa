@@ -1,13 +1,37 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import update, select, func
 from sqlalchemy.orm import Session
 from uuid import UUID
 from datetime import datetime, timezone
 
 from app.database import get_db
 from app.core.security import get_current_user
+from app.core.types import ZERO
 from app.models.models import (
     User, Budget, BudgetCategory, BudgetExpense, utcnow,
 )
+
+
+def _recompute_spent_amount(db: Session, category_id: UUID) -> None:
+    """Atomically re-derive spent_amount from the expense rows themselves.
+
+    Never `category.spent_amount += x` / `-= x` in Python: that's a
+    read-modify-write with no lock, so two requests against the same
+    category race and lose one update. Recomputing the total from its
+    source rows in one SQL UPDATE also means there is nothing to clamp —
+    the previous `max(0.0, spent_amount - expense.amount)` on delete only
+    hid the symptom of the same race instead of preventing it. See FIN-02.
+    """
+    total = (
+        select(func.coalesce(func.sum(BudgetExpense.amount), ZERO))
+        .where(BudgetExpense.category_id == category_id)
+        .scalar_subquery()
+    )
+    db.execute(
+        update(BudgetCategory)
+        .where(BudgetCategory.id == category_id)
+        .values(spent_amount=total)
+    )
 from app.schemas.budgets import (
     BudgetCreateRequest, BudgetUpdateRequest, BudgetResponse,
     BudgetListResponse, BudgetCategoryCreate, BudgetCategoryUpdate,
@@ -211,9 +235,9 @@ def add_expense(
         date=payload.date or datetime.now(timezone.utc),
     )
     db.add(expense)
+    db.flush()
 
-    
-    category.spent_amount += payload.amount
+    _recompute_spent_amount(db, category.id)
 
     db.commit()
     db.refresh(expense)
@@ -241,9 +265,11 @@ def delete_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    
-    category.spent_amount = max(0.0, category.spent_amount - expense.amount)
     db.delete(expense)
+    db.flush()
+
+    _recompute_spent_amount(db, category.id)
+
     db.commit()
 
 
@@ -261,10 +287,14 @@ def get_budget_summary(
         "id": str(budget.id),
         "title": budget.title,
         "type": budget.type,
-        "total_income": budget.total_income,
-        "total_allocated": budget.total_allocated,
-        "total_spent": budget.total_spent,
-        "unallocated": budget.unallocated,
+        # Cast Decimal -> str explicitly: this endpoint returns a raw dict
+        # rather than a response_model, and FastAPI's jsonable_encoder
+        # converts a bare Decimal to float — exactly the representation
+        # error FIN-01 exists to eliminate.
+        "total_income": str(budget.total_income),
+        "total_allocated": str(budget.total_allocated),
+        "total_spent": str(budget.total_spent),
+        "unallocated": str(budget.unallocated),
         "overall_progress": budget.overall_progress,
         "category_count": len(budget.categories),
         "is_over_budget": budget.total_spent > budget.total_allocated,

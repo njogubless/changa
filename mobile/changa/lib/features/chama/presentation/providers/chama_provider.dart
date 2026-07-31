@@ -1,3 +1,4 @@
+import 'package:changa/core/errors/failures.dart';
 import 'package:changa/features/auth/presentation/providers/auth_provider.dart';
 import 'package:changa/features/chama/data/models/chama_model.dart';
 import 'package:changa/features/chama/data/repository/chama_repository.dart';
@@ -34,17 +35,17 @@ class ChamaListState {
 class ChamaListNotifier extends StateNotifier<ChamaListState> {
   final ChamaRepository _repo;
 
-  ChamaListNotifier(this._repo) : super(const ChamaListState()) {
-    load();
-  }
+  ChamaListNotifier(this._repo) : super(const ChamaListState());
 
   Future<void> load() async {
     state = state.copyWith(isLoading: true);
     try {
       final result = await _repo.getMyChamas();
       state = state.copyWith(chamas: result.items, isLoading: false);
+    } on Failure catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(isLoading: false, error: failureMessage(e));
     }
   }
 
@@ -59,6 +60,13 @@ final chamaListProvider =
     StateNotifierProvider<ChamaListNotifier, ChamaListState>(
       (ref) => ChamaListNotifier(ref.watch(chamaRepositoryProvider)),
     );
+
+final chamaDetailProvider =
+    FutureProvider.autoDispose.family<ChamaModel, String>((ref, id) async {
+  return ref.read(chamaRepositoryProvider).getChama(id);
+});
+
+
 
 class CreateChamaState {
   final bool isLoading;
@@ -179,8 +187,10 @@ class ChamaProjectsNotifier extends StateNotifier<ChamaProjectsState> {
     try {
       final result = await _repo.getChamaProjects(chamaId);
       state = state.copyWith(projects: result.items, isLoading: false);
+    } on Failure catch (e) {
+      state = state.copyWith(isLoading: false, error: e.message);
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(isLoading: false, error: failureMessage(e));
     }
   }
 

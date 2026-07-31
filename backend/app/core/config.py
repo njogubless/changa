@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Changa"
     DEBUG: bool = False
     SECRET_KEY: str
-    ALLOWED_HOSTS: List[str] = ["*"]
+    ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     # Database
     DATABASE_URL: str
@@ -25,12 +25,17 @@ class Settings(BaseSettings):
     MPESA_PASSKEY: str = ""
     MPESA_CALLBACK_URL: str = ""
     MPESA_BASE_URL: str = "https://sandbox.safaricom.co.ke"
+    # Opaque path secret the callback URL must embed — see PAY-01. Without
+    # this, anyone who can reach the callback route can forge a "payment
+    # succeeded" event for any contribution.
+    MPESA_CALLBACK_TOKEN: str = ""
 
     # Airtel
     AIRTEL_CLIENT_ID: str = ""
     AIRTEL_CLIENT_SECRET: str = ""
     AIRTEL_BASE_URL: str = "https://openapiuat.airtel.africa"
     AIRTEL_CALLBACK_URL: str = ""
+    AIRTEL_CALLBACK_TOKEN: str = ""
 
     @field_validator("DATABASE_URL")
     @classmethod
