@@ -1,17 +1,20 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.database import create_tables
+from app.database import verify_schema_at_head
 from app.routers import auth, projects, payments, chamas, budgets
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import os
+    # Schema changes only ever come from `alembic upgrade head`, run as a
+    # deploy step before the app starts — never implicitly at boot. See
+    # docs/Changa_Engineering_audit.md, DB-01.
     if os.environ.get("PYTEST_RUNNING") != "1":
-        create_tables()
+        verify_schema_at_head()
     yield
 
 

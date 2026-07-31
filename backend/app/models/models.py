@@ -95,8 +95,8 @@ class User(Base):
     full_name       = Column(String(255), nullable=False)
     hashed_password = Column(String(255), nullable=False)
     avatar_url      = Column(String(500), nullable=True)
-    is_active       = Column(Boolean, default=True)
-    is_verified     = Column(Boolean, default=False)
+    is_active       = Column(Boolean, nullable=False, default=True)
+    is_verified     = Column(Boolean, nullable=False, default=False)
     created_at      = Column(DateTime(timezone=True), default=utcnow)
     updated_at      = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -113,9 +113,9 @@ class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
 
     id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     token      = Column(String(500), unique=True, nullable=False)
-    is_revoked = Column(Boolean, default=False)
+    is_revoked = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=utcnow)
     expires_at = Column(DateTime(timezone=True), nullable=False)
 
@@ -131,7 +131,7 @@ class Chama(Base):
     description  = Column(Text, nullable=True)
     avatar_color = Column(String(7), default="#1B4332")
     invite_code  = Column(String(16), unique=True, nullable=False, default=generate_invite_code)
-    is_active    = Column(Boolean, default=True)
+    is_active    = Column(Boolean, nullable=False, default=True)
     created_at   = Column(DateTime(timezone=True), default=utcnow)
     updated_at   = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -155,9 +155,9 @@ class ChamaMember(Base):
     )
 
     id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    chama_id   = Column(UUID(as_uuid=True), ForeignKey("chamas.id"), nullable=False, index=True)
+    chama_id   = Column(UUID(as_uuid=True), ForeignKey("chamas.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    role       = Column(SAEnum(ChamaMemberRole), default=ChamaMemberRole.MEMBER)
+    role       = Column(SAEnum(ChamaMemberRole), nullable=False, default=ChamaMemberRole.MEMBER)
     invited_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     joined_at  = Column(DateTime(timezone=True), default=utcnow)
 
@@ -171,16 +171,16 @@ class Project(Base):
     __tablename__ = "projects"
 
     id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    chama_id        = Column(UUID(as_uuid=True), ForeignKey("chamas.id"), nullable=False, index=True)
+    chama_id        = Column(UUID(as_uuid=True), ForeignKey("chamas.id", ondelete="CASCADE"), nullable=False, index=True)
     owner_id        = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     title           = Column(String(255), nullable=False)
     description     = Column(Text, nullable=True)
     cover_image_url = Column(String(500), nullable=True)
     target_amount   = Column(Float, nullable=False)
-    raised_amount   = Column(Float, default=0.0)
-    currency        = Column(String(3), default="KES")
-    status          = Column(SAEnum(ProjectStatus), default=ProjectStatus.ACTIVE)
-    is_anonymous    = Column(Boolean, default=False)
+    raised_amount   = Column(Float, nullable=False, default=0.0)
+    currency        = Column(String(3), nullable=False, default="KES")
+    status          = Column(SAEnum(ProjectStatus), nullable=False, default=ProjectStatus.ACTIVE)
+    is_anonymous    = Column(Boolean, nullable=False, default=False)
     deadline        = Column(DateTime(timezone=True), nullable=True)
     payment_type    = Column(SAEnum(PaymentAccountType), nullable=False)
     payment_number  = Column(String(20), nullable=False)
@@ -222,12 +222,12 @@ class Contribution(Base):
     project_id         = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True)
     user_id            = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     amount             = Column(Float, nullable=False)
-    currency           = Column(String(3), default="KES")
+    currency           = Column(String(3), nullable=False, default="KES")
     provider           = Column(SAEnum(PaymentProvider), nullable=False)
     phone              = Column(String(20), nullable=False)
     reference          = Column(String(100), unique=True, index=True, nullable=False)
     provider_reference = Column(String(100), nullable=True)
-    status             = Column(SAEnum(ContributionStatus), default=ContributionStatus.PENDING)
+    status             = Column(SAEnum(ContributionStatus), nullable=False, default=ContributionStatus.PENDING)
     failure_reason     = Column(Text, nullable=True)
     initiated_at       = Column(DateTime(timezone=True), default=utcnow)
     completed_at       = Column(DateTime(timezone=True), nullable=True)
@@ -243,11 +243,11 @@ class Budget(Base):
     __tablename__ = "budgets"
 
     id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    user_id         = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    user_id         = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title           = Column(String(255), nullable=False)
     type            = Column(SAEnum(BudgetType), nullable=False, default=BudgetType.PERSONAL)
     total_income    = Column(Float, nullable=False, default=0.0)
-    currency        = Column(String(3), default="KES")
+    currency        = Column(String(3), nullable=False, default="KES")
     event_date      = Column(DateTime(timezone=True), nullable=True)
 
     
@@ -291,7 +291,7 @@ class BudgetCategory(Base):
     __tablename__ = "budget_categories"
 
     id               = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    budget_id        = Column(UUID(as_uuid=True), ForeignKey("budgets.id"), nullable=False, index=True)
+    budget_id        = Column(UUID(as_uuid=True), ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False, index=True)
     category         = Column(SAEnum(BudgetCategoryType), nullable=False, default=BudgetCategoryType.OTHER)
     custom_label     = Column(String(255), nullable=True)   # override the default category name
     allocated_amount = Column(Float, nullable=False, default=0.0)
@@ -329,7 +329,7 @@ class BudgetExpense(Base):
     __tablename__ = "budget_expenses"
 
     id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
-    category_id = Column(UUID(as_uuid=True), ForeignKey("budget_categories.id"), nullable=False, index=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("budget_categories.id", ondelete="CASCADE"), nullable=False, index=True)
     description = Column(String(500), nullable=False)
     amount      = Column(Float, nullable=False)
     date        = Column(DateTime(timezone=True), nullable=False, default=utcnow)
