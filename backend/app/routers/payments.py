@@ -15,7 +15,7 @@ from app.schemas.projects import (
     ContributionResponse, ContributionStatusResponse,
     MpesaCallbackRequest, AirtelCallbackRequest,
 )
-from app.services import mpesa, airtel
+from app.services import mpesa, airtel, ledger_service
 
 router = APIRouter(tags=["Payments"])
 
@@ -42,7 +42,7 @@ def _assert_chama_member(project: Project, user: User, db: Session) -> None:
         raise HTTPException(status_code=403, detail="You must be a Chama member to contribute")
 
 
-def _apply_callback_result(contribution: Contribution, result: dict) -> None:
+def _apply_callback_result(db: Session, contribution: Contribution, result: dict) -> None:
     """Update contribution from a payment callback. Idempotent for success."""
     if contribution.status == ContributionStatus.SUCCESS:
         return
@@ -61,10 +61,13 @@ def _apply_callback_result(contribution: Contribution, result: dict) -> None:
             contribution.failure_reason = "Callback amount mismatch"
             return
 
-        contribution.status = ContributionStatus.SUCCESS
-        contribution.provider_reference = result.get("receipt")
-        contribution.completed_at = datetime.now(timezone.utc)
-        contribution.project.raised_amount += contribution.amount
+        # Ledger-backed, atomic and idempotent — see FIN-02. This both
+        # appends the ledger entry and updates raised_amount with a single
+        # SQL UPDATE, so two concurrent callbacks can never lose one
+        # another's credit the way a Python-side `+=` could.
+        ledger_service.credit_contribution(
+            db, contribution, result.get("receipt"), datetime.now(timezone.utc)
+        )
     else:
         contribution.status = ContributionStatus.FAILED
         contribution.failure_reason = result.get("failure_reason")
@@ -205,7 +208,7 @@ async def mpesa_callback(payload: MpesaCallbackRequest, db: Session = Depends(ge
     if not contribution:
         return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
-    _apply_callback_result(contribution, result)
+    _apply_callback_result(db, contribution, result)
     db.commit()
     return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
@@ -222,6 +225,6 @@ async def airtel_callback(payload: AirtelCallbackRequest, db: Session = Depends(
     if not contribution:
         return {"status": "ok"}
 
-    _apply_callback_result(contribution, result)
+    _apply_callback_result(db, contribution, result)
     db.commit()
     return {"status": "ok"}

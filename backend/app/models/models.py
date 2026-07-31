@@ -6,6 +6,7 @@ from sqlalchemy import (
     Column, String, Boolean, DateTime,
     Text, ForeignKey, Integer,
     Enum as SAEnum, UniqueConstraint,
+    CheckConstraint, Index,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -54,6 +55,11 @@ class ContributionStatus(str, enum.Enum):
 class PaymentProvider(str, enum.Enum):
     MPESA = "mpesa"
     AIRTEL = "airtel"
+
+
+class LedgerDirection(str, enum.Enum):
+    CREDIT = "credit"
+    REVERSAL = "reversal"
 
 
 class BudgetType(str, enum.Enum):
@@ -191,9 +197,10 @@ class Project(Base):
     created_at      = Column(DateTime(timezone=True), default=utcnow)
     updated_at      = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
-    chama         = relationship("Chama", back_populates="projects")
-    owner         = relationship("User", back_populates="owned_projects", foreign_keys=[owner_id])
-    contributions = relationship("Contribution", back_populates="project")
+    chama          = relationship("Chama", back_populates="projects")
+    owner          = relationship("User", back_populates="owned_projects", foreign_keys=[owner_id])
+    contributions  = relationship("Contribution", back_populates="project")
+    ledger_entries = relationship("LedgerEntry", back_populates="project", order_by="LedgerEntry.created_at")
 
     @property
     def percentage_funded(self) -> float:
@@ -237,6 +244,40 @@ class Contribution(Base):
 
     project = relationship("Project", back_populates="contributions")
     user    = relationship("User", back_populates="contributions")
+
+
+class LedgerEntry(Base):
+    """Append-only record of every change to a project's raised total.
+
+    This is the single source of truth for how much a project has raised —
+    `Project.raised_amount` is a projection maintained atomically alongside
+    it, never the authority itself. Nothing ever UPDATEs or DELETEs a row
+    here; a correction is a REVERSAL row, not an edit. See FIN-02 in
+    docs/Changa_Engineering_audit.md.
+    """
+    __tablename__ = "ledger_entries"
+
+    id              = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    project_id      = Column(UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True)
+    contribution_id = Column(UUID(as_uuid=True), ForeignKey("contributions.id"), nullable=False)
+    direction       = Column(SAEnum(LedgerDirection), nullable=False)
+    amount          = Column(MoneyColumn, nullable=False)
+    currency        = Column(String(3), nullable=False, default="KES")
+    reverses_id     = Column(UUID(as_uuid=True), ForeignKey("ledger_entries.id"), nullable=True)
+    created_at      = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+
+    project      = relationship("Project", back_populates="ledger_entries")
+    contribution = relationship("Contribution")
+
+    __table_args__ = (
+        # One ledger row per (contribution, direction) — the database
+        # enforces single-crediting even if application logic calls the
+        # credit path twice for the same contribution (a replayed or
+        # duplicated provider callback).
+        UniqueConstraint("contribution_id", "direction", name="uq_ledger_contribution_direction"),
+        CheckConstraint("amount > 0", name="ck_ledger_amount_positive"),
+        Index("ix_ledger_project_created", "project_id", "created_at"),
+    )
 
 
 

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import update, select, func
 from sqlalchemy.orm import Session
 from uuid import UUID
 from datetime import datetime, timezone
@@ -9,6 +10,28 @@ from app.core.types import ZERO
 from app.models.models import (
     User, Budget, BudgetCategory, BudgetExpense, utcnow,
 )
+
+
+def _recompute_spent_amount(db: Session, category_id: UUID) -> None:
+    """Atomically re-derive spent_amount from the expense rows themselves.
+
+    Never `category.spent_amount += x` / `-= x` in Python: that's a
+    read-modify-write with no lock, so two requests against the same
+    category race and lose one update. Recomputing the total from its
+    source rows in one SQL UPDATE also means there is nothing to clamp —
+    the previous `max(0.0, spent_amount - expense.amount)` on delete only
+    hid the symptom of the same race instead of preventing it. See FIN-02.
+    """
+    total = (
+        select(func.coalesce(func.sum(BudgetExpense.amount), ZERO))
+        .where(BudgetExpense.category_id == category_id)
+        .scalar_subquery()
+    )
+    db.execute(
+        update(BudgetCategory)
+        .where(BudgetCategory.id == category_id)
+        .values(spent_amount=total)
+    )
 from app.schemas.budgets import (
     BudgetCreateRequest, BudgetUpdateRequest, BudgetResponse,
     BudgetListResponse, BudgetCategoryCreate, BudgetCategoryUpdate,
@@ -212,8 +235,9 @@ def add_expense(
         date=payload.date or datetime.now(timezone.utc),
     )
     db.add(expense)
+    db.flush()
 
-    category.spent_amount += payload.amount
+    _recompute_spent_amount(db, category.id)
 
     db.commit()
     db.refresh(expense)
@@ -241,8 +265,11 @@ def delete_expense(
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
 
-    category.spent_amount = max(ZERO, category.spent_amount - expense.amount)
     db.delete(expense)
+    db.flush()
+
+    _recompute_spent_amount(db, category.id)
+
     db.commit()
 
 
