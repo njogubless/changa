@@ -15,7 +15,12 @@ class Settings(BaseSettings):
 
     # JWT
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    # Shorter than before (was 30): access tokens can now be revoked
+    # (RevokedAccessToken, User.tokens_valid_after — see SEC-01), but that
+    # revocation only takes effect on the next request either way. A
+    # shorter lifetime bounds how long a token can keep working if it is
+    # ever compromised and the deny-list check is somehow bypassed.
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # M-Pesa
