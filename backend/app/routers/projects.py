@@ -5,6 +5,7 @@ import math
 
 from app.database import get_db
 from app.core.security import get_current_user
+from app.core.types import ZERO
 from app.models.models import (
     User, Project, ChamaMember, ContributionStatus, Contribution,
 )
@@ -147,13 +148,13 @@ def get_contributors(
         )
         .all()
     )
-    total_raised = sum(c.amount for c in successful)
+    total_raised = sum((c.amount for c in successful), ZERO)
 
     contributors: dict = {}
     for c in successful:
         uid = str(c.user_id)
         if uid not in contributors:
-            contributors[uid] = {"user_id": uid, "total": 0.0}
+            contributors[uid] = {"user_id": uid, "total": ZERO}
             if not project.is_anonymous:
                 contributors[uid]["full_name"] = c.user.full_name
         contributors[uid]["total"] += c.amount
@@ -161,7 +162,7 @@ def get_contributors(
     result = []
     for uid, data in contributors.items():
         data["percentage"] = (
-            round((data["total"] / total_raised) * 100, 2) if total_raised else 0
+            round(float(data["total"] / total_raised) * 100, 2) if total_raised else 0
         )
         result.append(data)
 
