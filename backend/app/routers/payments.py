@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.security import get_current_user
 from app.core.ratelimit import check_rate_limit
+from app.core.observability import get_logger
 from app.models.models import (
     User, Project, Contribution, ContributionStatus, PaymentProvider,
     ChamaMember,
@@ -21,6 +22,7 @@ from app.schemas.projects import (
 from app.services import mpesa, airtel
 
 router = APIRouter(tags=["Payments"])
+log = get_logger("changa.payments")
 
 
 def _generate_reference(prefix: str) -> str:
@@ -79,15 +81,34 @@ def _apply_callback_result(contribution: Contribution, result: dict) -> None:
         if callback_amount is not None and abs(callback_amount - contribution.amount) > 0.01:
             contribution.status = ContributionStatus.FAILED
             contribution.failure_reason = "Callback amount mismatch"
+            log.warning(
+                "payment.settled",
+                outcome="amount_mismatch",
+                provider=contribution.provider.value,
+                reference=contribution.reference,
+            )
             return
 
         contribution.status = ContributionStatus.SUCCESS
         contribution.provider_reference = result.get("receipt")
         contribution.completed_at = datetime.now(timezone.utc)
         contribution.project.raised_amount += contribution.amount
+        log.info(
+            "payment.settled",
+            outcome="success",
+            provider=contribution.provider.value,
+            reference=contribution.reference,
+        )
     else:
         contribution.status = ContributionStatus.FAILED
         contribution.failure_reason = result.get("failure_reason")
+        log.info(
+            "payment.settled",
+            outcome="failed",
+            provider=contribution.provider.value,
+            reference=contribution.reference,
+            reason=contribution.failure_reason,
+        )
 
 
 @router.post("/contributions/mpesa", response_model=ContributionResponse, status_code=201)
@@ -114,6 +135,7 @@ async def contribute_mpesa(
     db.add(contribution)
     db.commit()
     db.refresh(contribution)
+    log.info("payment.initiated", provider="mpesa", reference=reference)
 
     try:
         await mpesa.stk_push(
@@ -126,6 +148,7 @@ async def contribute_mpesa(
         contribution.status = ContributionStatus.FAILED
         contribution.failure_reason = "Payment provider error"
         db.commit()
+        log.warning("payment.provider_error", provider="mpesa", reference=reference)
         raise HTTPException(status_code=502, detail="M-Pesa request failed. Please try again.")
 
     return ContributionResponse.model_validate(contribution)
@@ -155,6 +178,7 @@ async def contribute_airtel(
     db.add(contribution)
     db.commit()
     db.refresh(contribution)
+    log.info("payment.initiated", provider="airtel", reference=reference)
 
     try:
         await airtel.initiate_payment(
@@ -166,6 +190,7 @@ async def contribute_airtel(
         contribution.status = ContributionStatus.FAILED
         contribution.failure_reason = "Payment provider error"
         db.commit()
+        log.warning("payment.provider_error", provider="airtel", reference=reference)
         raise HTTPException(status_code=502, detail="Airtel request failed. Please try again.")
 
     return ContributionResponse.model_validate(contribution)

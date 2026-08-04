@@ -26,6 +26,7 @@ anyio==4.8.0
 # Utilities
 python-dotenv==1.0.1
 sentry-sdk==2.19.2
+structlog==24.4.0
 
 # Dev/build tools
 watchfiles==1.0.3

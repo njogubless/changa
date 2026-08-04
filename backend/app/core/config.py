@@ -9,6 +9,11 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     SECRET_KEY: str
     ALLOWED_HOSTS: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    ENVIRONMENT: str = "development"
+
+    # Observability (see OBS-01). Empty DSN disables Sentry rather than
+    # erroring — most local/dev/CI runs have no DSN configured.
+    SENTRY_DSN: str = ""
 
     # Database
     DATABASE_URL: str

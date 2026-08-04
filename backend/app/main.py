@@ -1,11 +1,17 @@
 import os
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.database import verify_schema_at_head
+from app.core.observability import configure_observability, get_logger
+from app.database import get_db, verify_schema_at_head
 from app.routers import auth, projects, payments, chamas, budgets
+
+log = get_logger("changa.main")
 
 
 @asynccontextmanager
@@ -39,6 +45,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+configure_observability(app)
+
 app.include_router(auth.router)
 app.include_router(chamas.router)
 app.include_router(projects.router)
@@ -48,4 +56,26 @@ app.include_router(budgets.router)   # ← new
 
 @app.get("/health", tags=["System"])
 def health():
+    """Liveness: is the process running at all? No dependency checks —
+    an orchestrator uses this to decide whether to restart the pod, and a
+    slow/unreachable database should trigger a readiness failure and
+    traffic drain, not a restart loop."""
     return {"status": "ok", "app": settings.APP_NAME}
+
+
+@app.get("/ready", tags=["System"])
+def ready(db: Session = Depends(get_db)):
+    """Readiness: can this instance actually serve traffic right now?
+    Before this, /health always returned ok even with the database
+    unreachable, so an orchestrator kept routing traffic to a broken pod
+    (see OBS-01)."""
+    try:
+        db.execute(text("SELECT 1"))
+        db_status = "ok"
+    except Exception:
+        log.exception("ready.db_check_failed")
+        db_status = "fail"
+
+    checks = {"db": db_status}
+    ok = all(v == "ok" for v in checks.values())
+    return JSONResponse(checks, status_code=200 if ok else 503)
