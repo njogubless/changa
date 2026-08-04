@@ -43,16 +43,28 @@ def _assert_owner(project: Project, user: User) -> None:
 def list_my_projects(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
+    search: str | None = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """All projects across chamas the current user belongs to."""
+    """All projects across chamas the current user belongs to.
+
+    This is the cross-chama feed the mobile app needs for its main
+    project list — see API-01 in docs/Changa_Engineering_audit.md: the
+    client used to call a bare GET /projects that was never defined
+    server-side (creation and listing had moved under
+    /chamas/{chama_id}/projects). This endpoint already existed and did
+    the right query; it only needed `search` to fully match what the
+    client sends.
+    """
     chama_ids = (
         db.query(ChamaMember.chama_id)
         .filter(ChamaMember.user_id == current_user.id)
         .subquery()
     )
     query = db.query(Project).filter(Project.chama_id.in_(chama_ids))
+    if search:
+        query = query.filter(Project.title.ilike(f"%{search}%"))
     total = query.count()
     projects = (
         query.order_by(Project.created_at.desc())

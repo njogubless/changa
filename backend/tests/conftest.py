@@ -79,15 +79,34 @@ def auth_headers(registered_user):
 
 
 @pytest.fixture
-def sample_project(client, auth_headers):
-    """Create a project and return its data."""
+def sample_chama(client, auth_headers):
+    """Create a chama and return its data."""
     resp = client.post(
-        "/projects",
+        "/chamas",
+        json={"name": "Wanjiku Chama", "description": "Test chama"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+@pytest.fixture
+def sample_project(client, auth_headers, sample_chama):
+    """Create a project and return its data.
+
+    Project creation lives under /chamas/{chama_id}/projects, not a bare
+    /projects — that route was never defined server-side, and `visibility`
+    isn't a field the schema accepts. See API-01 in
+    docs/Changa_Engineering_audit.md.
+    """
+    resp = client.post(
+        f"/chamas/{sample_chama['id']}/projects",
         json={
             "title": "Harambee ya Wanjiku",
             "description": "Tunachangia pamoja",
             "target_amount": 50000,
-            "visibility": "public",
+            "payment_type": "paybill",
+            "payment_number": "174379",
         },
         headers=auth_headers,
     )

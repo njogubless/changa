@@ -20,13 +20,17 @@ class ProjectsRepository {
         response.data as Map<String, dynamic>);
   }
 
+  // Same endpoint as getMyProjects (there is only one cross-chama listing
+  // route server-side) — kept as a separate method because
+  // projectsNotifierProvider drives paging/search state that
+  // getMyProjects's caller doesn't need. See API-01.
   Future<ProjectListResponse> getProjects({
     int page = 1,
     int pageSize = 20,
     String? search,
   }) async {
     final response = await _api.get(
-      ApiConstants.projects,
+      ApiConstants.myProjects,
       params: {
         'page': page,
         'page_size': pageSize,
@@ -42,35 +46,13 @@ class ProjectsRepository {
     return ProjectModel.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<ProjectModel> createProject({
-    required String title,
-    String? description,
-    required double targetAmount,
-    String visibility = 'public',
-    bool isAnonymous = false,
-    String? coverImageUrl,
-    DateTime? deadline,
-  }) async {
-    final response = await _api.post(ApiConstants.projects, data: {
-      'title': title,
-      if (description != null) 'description': description,
-      'target_amount': targetAmount,
-      'visibility': visibility,
-      'is_anonymous': isAnonymous,
-      if (coverImageUrl != null) 'cover_image_url': coverImageUrl,
-      if (deadline != null) 'deadline': deadline.toIso8601String(),
-    });
-    return ProjectModel.fromJson(response.data as Map<String, dynamic>);
-  }
-
  Future<ProjectModel> updateProject(
   String id, {
   String? title,
   String? description,
-  double? targetAmount,       
-  String? visibility,         
-  bool? isAnonymous,          
-  DateTime? deadline,         
+  double? targetAmount,
+  bool? isAnonymous,
+  DateTime? deadline,
   String? status,
 }) async {
   final response = await _api.put(
@@ -79,7 +61,6 @@ class ProjectsRepository {
       if (title != null) 'title': title,
       if (description != null) 'description': description,
       if (targetAmount != null) 'target_amount': targetAmount,
-      if (visibility != null) 'visibility': visibility,
       if (isAnonymous != null) 'is_anonymous': isAnonymous,
       if (deadline != null) 'deadline': deadline.toIso8601String(),
       if (status != null) 'status': status,
