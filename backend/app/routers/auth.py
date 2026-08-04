@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
@@ -16,6 +16,7 @@ from app.core.ratelimit import (
     rate_limit_dependency, check_not_locked_out,
     record_login_failure, clear_login_failures,
 )
+from app.models.compliance import ConsentRecord, KycProfile
 from app.models.models import User, RefreshToken
 from app.schemas.auth import (
     RegisterRequest, LoginRequest, LoginResponse,
@@ -23,6 +24,11 @@ from app.schemas.auth import (
 )
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+
+# Matches the "Last updated" date in the mobile app's policy text
+# (policy_view_screen.dart) — bump this whenever that text changes so new
+# consent_records rows reflect what was actually shown. See REG-01.
+TERMS_POLICY_VERSION = "2025-04"
 
 
 def _issue_session(db: Session, user: User) -> tuple[str, str]:
@@ -40,7 +46,7 @@ def _issue_session(db: Session, user: User) -> tuple[str, str]:
     "/register", response_model=LoginResponse, status_code=201,
     dependencies=[Depends(rate_limit_dependency("auth:register"))],
 )
-def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     if db.query(User).filter(User.phone == payload.phone).first():
@@ -54,6 +60,25 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     )
     db.add(user)
     db.flush()
+
+    # KYC scaffolding (see REG-01): every user starts at the lowest tier.
+    # Nothing reads or enforces this yet — there's no verification flow to
+    # move anyone off it — but the row exists so that flow doesn't also
+    # need a backfill migration once it's built.
+    db.add(KycProfile(user_id=user.id))
+
+    # Consent evidence, not just a UI checkbox (see REG-01) — the schema
+    # validator above already rejects payload.terms_accepted=False, so
+    # granted is always True here; recorded anyway so the record shape
+    # matches a future policy where consent can be withdrawn.
+    db.add(ConsentRecord(
+        user_id=user.id,
+        policy="terms_and_privacy",
+        policy_version=TERMS_POLICY_VERSION,
+        granted=payload.terms_accepted,
+        ip=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+    ))
 
     access_token, refresh_token = _issue_session(db, user)
     db.commit()

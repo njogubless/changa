@@ -76,6 +76,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String email,
     required String phone,
     required String password,
+    required bool termsAccepted,
   }) async {
     state = const AuthLoading();
     try {
@@ -84,6 +85,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: email,
         phone: phone,
         password: password,
+        termsAccepted: termsAccepted,
       );
       // Persist onboarding flag so it's never shown again after registration.
       SharedPreferences.getInstance().then(

@@ -17,12 +17,14 @@ class AuthRepository {
     required String email,
     required String phone,
     required String password,
+    required bool termsAccepted,
   }) async {
     final response = await _api.post(ApiConstants.register, data: {
       'full_name': fullName,
       'email': email,
       'phone': phone,
       'password': password,
+      'terms_accepted': termsAccepted,
     });
     final tokens = AuthTokens.fromJson(response.data);
     await _api.saveTokens(

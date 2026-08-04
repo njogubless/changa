@@ -35,6 +35,8 @@ app.dependency_overrides[get_db] = override_get_db
 def reset_db():
     """Fresh tables for every test, created on the TEST engine."""
     import app.models.models  # noqa — register all models
+    import app.models.audit  # noqa — audit_events (see REG-01)
+    import app.models.compliance  # noqa — kyc_profiles, consent_records
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
@@ -65,6 +67,7 @@ def registered_user(client):
         "email": "amina@changa.co.ke",
         "phone": "254712345678",
         "password": "Secure123",
+        "terms_accepted": True,
     }
     resp = client.post("/auth/register", json=user_data)
     assert resp.status_code == 201

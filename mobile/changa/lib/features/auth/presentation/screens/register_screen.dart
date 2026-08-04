@@ -54,6 +54,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             email: _emailCtrl.text.trim(),
             phone: _phoneCtrl.text.trim(),
             password: _passwordCtrl.text,
+            termsAccepted: _hasConsented,
           );
       debugPrint('>>> REGISTER CALL COMPLETED');
     } catch (e, st) {

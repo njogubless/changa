@@ -11,6 +11,14 @@ from app.core.observability import configure_observability, get_logger
 from app.database import get_db, verify_schema_at_head
 from app.routers import auth, projects, payments, chamas, budgets
 
+# Import-time side effects, both required before any request is served:
+# registers audit_events/kyc_profiles/consent_records with Base.metadata
+# (so create_all/alembic see them), and registers the before_flush/
+# after_flush Session hooks that populate audit_events. See REG-01.
+import app.models.audit  # noqa: F401
+import app.models.compliance  # noqa: F401
+import app.core.audit  # noqa: F401
+
 log = get_logger("changa.main")
 
 

@@ -31,6 +31,7 @@ import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
+from app.core.audit_context import resolve_actor_id, set_actor_id, set_request_info
 from app.core.config import settings
 
 # Field names that must never reach a log line or Sentry breadcrumb in the
@@ -93,6 +94,13 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             route=request.url.path,
             method=request.method,
         )
+        # Also feeds the audit trail (see REG-01) — the before_flush hook
+        # has no access to the Request object otherwise. Resolving the
+        # actor here, before call_next, is required, not just convenient —
+        # see the module docstring on app/core/audit_context.py for why
+        # setting it later, from inside get_auth_context, doesn't work.
+        set_request_info(request.client.host if request.client else None, request_id)
+        set_actor_id(resolve_actor_id(request.headers.get("authorization")))
         started = time.perf_counter()
         try:
             response = await call_next(request)

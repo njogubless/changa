@@ -39,6 +39,7 @@ VALID_USER = {
     "email": "amina@example.com",
     "phone": "254712345678",
     "password": "Secure123",
+    "terms_accepted": True,
 }
 
 
@@ -71,6 +72,11 @@ def test_register_invalid_phone(client):
 
 def test_register_weak_password(client):
     r = client.post("/auth/register", json={**VALID_USER, "password": "abc"})
+    assert r.status_code == 422
+
+
+def test_register_requires_terms_acceptance(client):
+    r = client.post("/auth/register", json={**VALID_USER, "terms_accepted": False})
     assert r.status_code == 422
 
 
