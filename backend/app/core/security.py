@@ -21,6 +21,15 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
+# A real bcrypt hash of a value nobody will ever type, computed once at
+# import time. Used so a login for a nonexistent email still runs a full
+# hash comparison (see SEC-03) — without this, a login attempt for an
+# unregistered email returns near-instantly while one for a real email
+# takes bcrypt's ~100ms, letting an attacker enumerate registered emails
+# purely from response timing.
+DUMMY_PASSWORD_HASH = hash_password("no-user-has-this-password")
+
+
 def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])

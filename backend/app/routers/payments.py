@@ -1,15 +1,18 @@
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.core.security import get_current_user
+from app.core.ratelimit import check_rate_limit
 from app.models.models import (
     User, Project, Contribution, ContributionStatus, PaymentProvider,
     ChamaMember,
 )
+
+DAILY_CONTRIBUTION_CAP = 20
 from app.schemas.projects import (
     MpesaContributeRequest, AirtelContributeRequest,
     ContributionResponse, ContributionStatusResponse,
@@ -40,6 +43,24 @@ def _assert_chama_member(project: Project, user: User, db: Session) -> None:
     ).first()
     if not is_member:
         raise HTTPException(status_code=403, detail="You must be a Chama member to contribute")
+
+
+def _assert_under_daily_cap(user: User, db: Session) -> None:
+    """A per-request rate limit alone doesn't bound total daily provider
+    cost — this does. Each initiation triggers a real STK push billed to
+    the platform; with no cap, an unthrottled loop of small contributions
+    is unlimited spend, not just an inconvenience. See SEC-03."""
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    count = (
+        db.query(Contribution)
+        .filter(Contribution.user_id == user.id, Contribution.initiated_at >= since)
+        .count()
+    )
+    if count >= DAILY_CONTRIBUTION_CAP:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily contribution limit reached ({DAILY_CONTRIBUTION_CAP}/24h). Please try again tomorrow.",
+        )
 
 
 def _apply_callback_result(contribution: Contribution, result: dict) -> None:
@@ -75,8 +96,10 @@ async def contribute_mpesa(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    check_rate_limit("payment:initiate", str(current_user.id))
     project = _get_active_project(payload.project_id, db)
     _assert_chama_member(project, current_user, db)
+    _assert_under_daily_cap(current_user, db)
     reference = _generate_reference("MPESA")
 
     contribution = Contribution(
@@ -114,8 +137,10 @@ async def contribute_airtel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    check_rate_limit("payment:initiate", str(current_user.id))
     project = _get_active_project(payload.project_id, db)
     _assert_chama_member(project, current_user, db)
+    _assert_under_daily_cap(current_user, db)
     reference = _generate_reference("AIRTEL")
 
     contribution = Contribution(

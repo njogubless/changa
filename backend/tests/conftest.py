@@ -9,6 +9,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql://postgres:postgres@localhost:
 
 from app.main import app
 from app.database import Base, get_db
+from app.core import ratelimit
 
 TEST_DATABASE_URL = "sqlite:///./test_changa.db"
 
@@ -37,6 +38,18 @@ def reset_db():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    """The rate limiter (app/core/ratelimit.py) is process-lifetime, in-
+    memory state by design (see SEC-03) — reset it between tests so one
+    test's login/register attempts don't trip another's limit. Every test
+    shares the same source IP under TestClient, so without this the
+    auth:register limit (3/hour) would exhaust after 3 tests regardless
+    of file."""
+    ratelimit.reset_all()
+    yield
 
 
 @pytest.fixture

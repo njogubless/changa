@@ -5,12 +5,16 @@ from datetime import datetime, timezone
 from app.database import get_db
 from app.core.config import settings
 from app.core.security import (
-    hash_password, verify_password,
+    hash_password, verify_password, DUMMY_PASSWORD_HASH,
     get_current_user, get_current_token_context, AuthContext,
 )
 from app.core.tokens import (
     create_access_token, create_refresh_token_row, hash_refresh_token,
     revoke_family, revoke_all_sessions, revoke_access_token,
+)
+from app.core.ratelimit import (
+    rate_limit_dependency, check_not_locked_out,
+    record_login_failure, clear_login_failures,
 )
 from app.models.models import User, RefreshToken
 from app.schemas.auth import (
@@ -32,7 +36,10 @@ def _issue_session(db: Session, user: User) -> tuple[str, str]:
     return access_token, raw_refresh
 
 
-@router.post("/register", response_model=LoginResponse, status_code=201)
+@router.post(
+    "/register", response_model=LoginResponse, status_code=201,
+    dependencies=[Depends(rate_limit_dependency("auth:register"))],
+)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -59,15 +66,34 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post(
+    "/login", response_model=LoginResponse,
+    dependencies=[Depends(rate_limit_dependency("auth:login"))],
+)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    # Per-account progressive lockout — independent of the per-IP flood
+    # guard above, this protects one specific account from credential
+    # stuffing regardless of how many source IPs the attempts come from.
+    check_not_locked_out(payload.email)
+
     user = db.query(User).filter(User.email == payload.email, User.is_active == True).first()
-    if not user or not verify_password(payload.password, user.hashed_password):
+
+    # Always run a full bcrypt comparison, even for an email that doesn't
+    # exist — otherwise a nonexistent-email request returns near-instantly
+    # while a real one takes ~100ms, and that timing difference alone lets
+    # an attacker enumerate registered emails (see SEC-03).
+    password_ok = verify_password(
+        payload.password, user.hashed_password if user else DUMMY_PASSWORD_HASH,
+    )
+
+    if not user or not password_ok:
+        record_login_failure(payload.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
 
+    clear_login_failures(payload.email)
     access_token, refresh_token = _issue_session(db, user)
     db.commit()
 
@@ -78,7 +104,10 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh", response_model=TokenResponse,
+    dependencies=[Depends(rate_limit_dependency("auth:refresh"))],
+)
 def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
     presented_hash = hash_refresh_token(payload.refresh_token)
     stored = db.query(RefreshToken).filter(
