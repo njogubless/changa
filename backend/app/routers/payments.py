@@ -1,7 +1,7 @@
 import hmac
 import json
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
@@ -9,10 +9,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.core.ratelimit import check_rate_limit
+from app.core.observability import get_logger
 from app.models.models import (
     User, Project, Contribution, ContributionStatus, PaymentProvider,
     ChamaMember, ProviderEvent, OutboxMessage,
 )
+
+DAILY_CONTRIBUTION_CAP = 20
 from app.schemas.projects import (
     MpesaContributeRequest, AirtelContributeRequest,
     ContributionResponse, ContributionStatusResponse,
@@ -20,6 +24,7 @@ from app.schemas.projects import (
 from app.services import mpesa, airtel, ledger_service
 
 router = APIRouter(tags=["Payments"])
+log = get_logger("changa.payments")
 
 
 def _generate_reference(prefix: str) -> str:
@@ -92,8 +97,10 @@ async def contribute_mpesa(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    check_rate_limit("payment:initiate", str(current_user.id))
     project = _get_active_project(payload.project_id, db)
     _assert_chama_member(project, current_user, db)
+    _assert_under_daily_cap(current_user, db)
     reference = _generate_reference("MPESA")
 
     # The handler does one thing: commit the contribution and an outbox
@@ -120,6 +127,7 @@ async def contribute_mpesa(
     ))
     db.commit()
     db.refresh(contribution)
+    log.info("payment.initiated", provider="mpesa", reference=reference)
 
     return ContributionResponse.model_validate(contribution)
 
@@ -130,8 +138,10 @@ async def contribute_airtel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    check_rate_limit("payment:initiate", str(current_user.id))
     project = _get_active_project(payload.project_id, db)
     _assert_chama_member(project, current_user, db)
+    _assert_under_daily_cap(current_user, db)
     reference = _generate_reference("AIRTEL")
 
     contribution = Contribution(
@@ -151,6 +161,7 @@ async def contribute_airtel(
     ))
     db.commit()
     db.refresh(contribution)
+    log.info("payment.initiated", provider="airtel", reference=reference)
 
     return ContributionResponse.model_validate(contribution)
 

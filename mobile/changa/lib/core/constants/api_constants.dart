@@ -15,14 +15,14 @@ static const String baseUrl = 'http://192.168.1.193:8000';
   static const String me = '/auth/me';
   static const String changePassword = '/auth/change-password';
 
-  static const String projects = '/projects';
+  // A bare GET/POST /projects was never defined server-side — creation and
+  // listing live under /chamas/{chama_id}/projects, and the cross-chama
+  // feed is /projects/mine. /projects/{id}/members, /teams and the
+  // team-join route never existed server-side either. See API-01 in
+  // docs/Changa_Engineering_audit.md.
   static const String myProjects = '/projects/mine';
   static String projectById(String id) => '/projects/$id';
   static String projectContributors(String id) => '/projects/$id/contributors';
-  static String projectMembers(String id) => '/projects/$id/members';
-  static String projectTeams(String id) => '/projects/$id/teams';
-  static String joinTeam(String projectId, String teamId) =>
-      '/projects/$projectId/teams/$teamId/join';
 
 
   static const String contributeMpesa = '/contributions/mpesa';

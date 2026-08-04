@@ -41,3 +41,7 @@ mobile/build/
 mobile/.flutter-plugins
 mobile/.flutter-plugins-dependencies
 mobile/pubspec.lock
+
+# Flutter build artifacts
+mobile/changa/android/build/reports/problems/devtools_options.html
+mobile/changa/devtools_options.yaml

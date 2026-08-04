@@ -105,6 +105,12 @@ class User(Base):
     avatar_url      = Column(String(500), nullable=True)
     is_active       = Column(Boolean, nullable=False, default=True)
     is_verified     = Column(Boolean, nullable=False, default=False)
+    # Bumped to "now" on logout-all-sessions, password change, or an admin
+    # disabling the account. get_current_user rejects any access token
+    # whose `iat` predates this, so those actions take effect within the
+    # access token's (short) remaining lifetime instead of never, without
+    # requiring a Redis-backed per-jti deny-list. See SEC-01.
+    tokens_valid_after = Column(DateTime(timezone=True), nullable=True)
     created_at      = Column(DateTime(timezone=True), default=utcnow)
     updated_at      = Column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
@@ -118,16 +124,52 @@ class User(Base):
 
 
 class RefreshToken(Base):
+    """A refresh token is a credential and must be stored like one.
+
+    The full JWT used to be written verbatim into `token` — read access to
+    this table (a backup, a replica, a logged query, a SQL injection
+    anywhere else in the app) was immediate, silent account takeover for
+    every user with an active session. Only a SHA-256 digest of an opaque
+    high-entropy secret is stored now; there are no claims to embed, so it
+    doesn't need to be a JWT at all.
+
+    `family_id` groups every refresh token issued from one login into a
+    rotation chain. Reuse of an already-consumed token in a family is the
+    canonical signal that a token has been stolen and replayed — revoking
+    the whole family on reuse (see app/core/tokens.py) means a stolen
+    token's still-valid sibling stops working the moment the theft is
+    detected, instead of quietly continuing to work forever. See SEC-01.
+    """
     __tablename__ = "refresh_tokens"
 
-    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    token      = Column(String(500), unique=True, nullable=False)
-    is_revoked = Column(Boolean, nullable=False, default=False)
-    created_at = Column(DateTime(timezone=True), default=utcnow)
-    expires_at = Column(DateTime(timezone=True), nullable=False)
+    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id        = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    token_hash     = Column(String(64), unique=True, nullable=False, index=True)  # sha256 hex
+    family_id      = Column(UUID(as_uuid=True), nullable=False, index=True)
+    consumed_at    = Column(DateTime(timezone=True), nullable=True)
+    revoked_at     = Column(DateTime(timezone=True), nullable=True)
+    revoked_reason = Column(String(40), nullable=True)  # logout | reuse | password_change
+    created_at     = Column(DateTime(timezone=True), default=utcnow)
+    expires_at     = Column(DateTime(timezone=True), nullable=False)
 
     user = relationship("User", back_populates="refresh_tokens")
+
+
+class RevokedAccessToken(Base):
+    """Deny-list for access tokens revoked before their natural expiry.
+
+    Access tokens are short-lived and stateless by design, but "stateless"
+    previously meant logout was cosmetic — a token kept working for its
+    full lifetime no matter what the user did. Checked once per request in
+    get_current_user, keyed by `jti`; rows past `expires_at` are inert and
+    safe to prune (no cleanup job wired up yet — see OBS-01/PERF-05 for
+    where that belongs). See SEC-01.
+    """
+    __tablename__ = "revoked_access_tokens"
+
+    jti        = Column(String(36), primary_key=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    revoked_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
 
 
 class Chama(Base):

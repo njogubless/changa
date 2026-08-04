@@ -9,6 +9,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql://postgres:postgres@localhost:
 
 from app.main import app
 from app.database import Base, get_db
+from app.core import ratelimit
 
 TEST_DATABASE_URL = "sqlite:///./test_changa.db"
 
@@ -34,9 +35,23 @@ app.dependency_overrides[get_db] = override_get_db
 def reset_db():
     """Fresh tables for every test, created on the TEST engine."""
     import app.models.models  # noqa — register all models
+    import app.models.audit  # noqa — audit_events (see REG-01)
+    import app.models.compliance  # noqa — kyc_profiles, consent_records
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    """The rate limiter (app/core/ratelimit.py) is process-lifetime, in-
+    memory state by design (see SEC-03) — reset it between tests so one
+    test's login/register attempts don't trip another's limit. Every test
+    shares the same source IP under TestClient, so without this the
+    auth:register limit (3/hour) would exhaust after 3 tests regardless
+    of file."""
+    ratelimit.reset_all()
+    yield
 
 
 @pytest.fixture
@@ -52,6 +67,7 @@ def registered_user(client):
         "email": "amina@changa.co.ke",
         "phone": "254712345678",
         "password": "Secure123",
+        "terms_accepted": True,
     }
     resp = client.post("/auth/register", json=user_data)
     assert resp.status_code == 201
@@ -66,15 +82,34 @@ def auth_headers(registered_user):
 
 
 @pytest.fixture
-def sample_project(client, auth_headers):
-    """Create a project and return its data."""
+def sample_chama(client, auth_headers):
+    """Create a chama and return its data."""
     resp = client.post(
-        "/projects",
+        "/chamas",
+        json={"name": "Wanjiku Chama", "description": "Test chama"},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    return resp.json()
+
+
+@pytest.fixture
+def sample_project(client, auth_headers, sample_chama):
+    """Create a project and return its data.
+
+    Project creation lives under /chamas/{chama_id}/projects, not a bare
+    /projects — that route was never defined server-side, and `visibility`
+    isn't a field the schema accepts. See API-01 in
+    docs/Changa_Engineering_audit.md.
+    """
+    resp = client.post(
+        f"/chamas/{sample_chama['id']}/projects",
         json={
             "title": "Harambee ya Wanjiku",
             "description": "Tunachangia pamoja",
             "target_amount": 50000,
-            "visibility": "public",
+            "payment_type": "paybill",
+            "payment_number": "174379",
         },
         headers=auth_headers,
     )

@@ -111,50 +111,11 @@ final projectContributorsProvider =
       return ref.watch(projectsRepositoryProvider).getContributors(id);
     });
 
-class CreateProjectState {
-  final bool isLoading;
-  final String? error;
-  final ProjectModel? created;
-
-  const CreateProjectState({this.isLoading = false, this.error, this.created});
-}
-
-class CreateProjectNotifier extends StateNotifier<CreateProjectState> {
-  final ProjectsRepository _repo;
-
-  CreateProjectNotifier(this._repo) : super(const CreateProjectState());
-
-  Future<void> create({
-    required String title,
-    String? description,
-    required double targetAmount,
-    required String visibility,
-    required bool isAnonymous,
-    DateTime? deadline,
-  }) async {
-    state = const CreateProjectState(isLoading: true);
-    try {
-      final project = await _repo.createProject(
-        title: title,
-        description: description,
-        targetAmount: targetAmount,
-        visibility: visibility,
-        isAnonymous: isAnonymous,
-        deadline: deadline,
-      );
-      state = CreateProjectState(created: project);
-    } catch (e) {
-      state = CreateProjectState(error: e.toString());
-    }
-  }
-
-  void reset() => state = const CreateProjectState();
-}
-
-final createProjectProvider = StateNotifierProvider.autoDispose<
-  CreateProjectNotifier,
-  CreateProjectState
->((ref) => CreateProjectNotifier(ref.watch(projectsRepositoryProvider)));
+// createProjectProvider (bare POST /projects) was removed here — that
+// route never existed server-side and this provider had zero callers;
+// the real, working creation flow is createChamaProjectProvider in
+// chama_provider.dart, which posts to /chamas/{chama_id}/projects. See
+// API-01 in docs/Changa_Engineering_audit.md.
 
 // ── All-projects aggregator ──────────────────────────────────────────────────
 // Combines projects from every Chama the user belongs to into one sorted list.

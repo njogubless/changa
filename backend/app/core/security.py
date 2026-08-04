@@ -1,13 +1,14 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional
-import bcrypt
+from dataclasses import dataclass
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+import bcrypt
 
 from app.core.config import settings
+from app.core.tokens import is_access_token_revoked
 from app.database import get_db
+from app.models.models import User
 
 bearer_scheme = HTTPBearer()
 
@@ -20,20 +21,13 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (
-        expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    to_encode.update({"exp": expire, "type": "access"})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-
-
-def create_refresh_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
-    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+# A real bcrypt hash of a value nobody will ever type, computed once at
+# import time. Used so a login for a nonexistent email still runs a full
+# hash comparison (see SEC-03) — without this, a login attempt for an
+# unregistered email returns near-instantly while one for a real email
+# takes bcrypt's ~100ms, letting an attacker enumerate registered emails
+# purely from response timing.
+DUMMY_PASSWORD_HASH = hash_password("no-user-has-this-password")
 
 
 def decode_token(token: str) -> dict:
@@ -48,12 +42,25 @@ def decode_token(token: str) -> dict:
         )
 
 
-def get_current_user(
+@dataclass
+class AuthContext:
+    user: User
+    jti: str | None
+    iat: int | None
+
+
+def get_auth_context(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
-):
-    from app.models.models import User, RefreshToken
+) -> AuthContext:
+    """Decodes and fully validates the bearer token, including revocation.
 
+    Single entry point so every caller (get_current_user for the common
+    case, get_current_token_context where the jti/iat is needed to act on
+    the current session specifically, e.g. logout) gets the same checks —
+    FastAPI caches this per request, so using both costs one decode, not
+    two.
+    """
     payload = decode_token(credentials.credentials)
 
     if payload.get("type") != "access":
@@ -63,8 +70,32 @@ def get_current_user(
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
+    jti = payload.get("jti")
+    if jti and is_access_token_revoked(db, jti):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token revoked")
+
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    return user
+    # Bulk invalidation: logout-all-sessions, password change or an admin
+    # disabling the account bump tokens_valid_after, so every access token
+    # issued before that moment stops working within its own (short)
+    # remaining lifetime instead of never. See SEC-01.
+    iat = payload.get("iat")
+    if user.tokens_valid_after is not None and iat is not None:
+        if iat < int(user.tokens_valid_after.timestamp()):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session expired — please sign in again",
+            )
+
+    return AuthContext(user=user, jti=jti, iat=iat)
+
+
+def get_current_user(ctx: AuthContext = Depends(get_auth_context)):
+    return ctx.user
+
+
+def get_current_token_context(ctx: AuthContext = Depends(get_auth_context)) -> AuthContext:
+    return ctx

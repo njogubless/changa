@@ -4,6 +4,7 @@ from uuid import UUID
 
 from app.database import get_db
 from app.core.security import get_current_user
+from app.core.ratelimit import check_rate_limit
 from app.models.models import (
     User, Chama, ChamaMember, Project,
     ChamaMemberRole, ProjectStatus,
@@ -167,6 +168,11 @@ def join_chama(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Keyed by the authenticated user, not IP: this is what actually stops
+    # invite-code enumeration (see SEC-03) — an attacker guessing codes
+    # still has to do it through one account.
+    check_rate_limit("chama:join", str(current_user.id))
+
     chama = db.query(Chama).filter(
         Chama.invite_code == payload.invite_code,
         Chama.is_active == True,

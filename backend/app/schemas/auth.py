@@ -10,6 +10,18 @@ class RegisterRequest(BaseModel):
     email: EmailStr
     phone: str
     password: str
+    # Evidence, not just a UI gate — see REG-01. The mobile register screen
+    # already disables its submit button until this is checked; this just
+    # makes the server actually record that the user agreed to something,
+    # instead of trusting an unenforced client-side checkbox.
+    terms_accepted: bool
+
+    @field_validator("terms_accepted")
+    @classmethod
+    def validate_terms_accepted(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("You must accept the Terms of Service and Privacy Policy")
+        return v
 
     @field_validator("phone")
     @classmethod
