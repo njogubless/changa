@@ -1,0 +1,27 @@
+# The history that matters is the history you didn't record
+
+`update_project` and `update_chama` both worked the same simple way: loop over whatever fields the request sent, and `setattr` each one onto the database row. `remove_member` hard-deletes the row the moment someone is removed from a chama. `regenerate_invite_code` overwrites the old code in place. All perfectly functional — and all of them leave zero trace of *who* did it, *when*, or *what the value was before*.
+
+For a platform that pools members' money and moves it through mobile payment providers, that gap isn't just inconvenient — it's the kind of thing a regulator, a due-diligence review, or simply an angry member disputing a change will ask about directly, and "we don't keep that information" is not an answer anyone wants to give. There's a second, smaller but very real gap sitting right next to it: the mobile app's registration screen has a checkbox — "I agree to the Terms and Conditions" — that gates whether the submit button is even clickable, but the value of that checkbox was never sent to the server at all. The UI implies consent is being tracked. It wasn't being recorded anywhere.
+
+## What we changed
+
+**An audit trail that can't be forgotten, because no handler has to remember to write it.** Rather than adding a line to every route that changes a `Project`, a `Chama`, a membership, a `Contribution`, or a `Budget`, we hooked directly into SQLAlchemy's `before_flush` event — the point right before *any* change is about to be written to the database, for any reason. That hook inspects what's about to change, builds a before/after snapshot of exactly which fields moved and what they moved from and to, and writes it as its own row in an append-only `audit_events` table, in the same transaction as the change itself. A developer adding a new field to `Project` doesn't need to also remember to log changes to it — the hook already covers the whole model.
+
+**Consent became evidence, not just a client-side gate.** Registration now requires a `terms_accepted` field the server actually validates, and a successful registration writes a `consent_records` row capturing the policy version, the request's IP, and its user agent — the checkbox the app already had now actually does something server-side, instead of gating a button and then being discarded.
+
+**KYC got a table, deliberately not a lock.** The audit's full recommendation included tiered identity verification with hard contribution limits for unverified users. We built the `kyc_profiles` table — every new user gets a row, starting at the lowest tier — but we did not wire up an enforced spending cap, because there's no identity-verification flow yet to let anyone move *off* that lowest tier. Shipping a hard, permanent cap with no way for a real user to ever raise it isn't a technical decision to make unilaterally; it's a product decision, and it got surfaced and confirmed explicitly rather than shipped quietly as a side effect of "doing the compliance work."
+
+## The bug that took the longest to understand
+
+The first version of this set `actor_id` — whose change was this? — from inside the function that authenticates a request and resolves the current user. It seemed like the obvious place: by the time that function runs, you know exactly who's making the request. Every audit row it produced for an authenticated action came back with the actor recorded as nobody.
+
+The actual cause sits in how FastAPI dispatches synchronous code. A `def` (not `async def`) route handler, and each of *its* synchronous dependencies, don't run in the same thread — each one gets dispatched to the thread pool independently, and each of those dispatches takes its own independent snapshot of the request's context at the moment it starts. Setting a value inside one of those snapshots doesn't write back to the shared request — it writes to a private copy that gets thrown away the moment that one dependency finishes. The function that authenticates the user, and the route handler that actually saves the change, were running in two different copies of the same context, and a value set in one was invisible to the other.
+
+The fix was to stop trying to set it from inside the authentication dependency, and set it instead in the one place that runs *before* any of those thread-pool dispatches happen at all: the outermost request middleware, which runs directly in the request's own async context, before anything gets copied anywhere. Every dependency and handler that runs afterward inherits that value correctly, because their copies are taken *after* it was set, not from some other independent copy.
+
+## How we knew it worked
+
+We created a chama, then updated it, and checked the database directly rather than trusting the API's response: one `chamas.created` audit row and one `chamas.updated` row, the updated row's before/after JSON showing exactly the field that changed, and — the part that had been silently wrong — the actor on both rows correctly matching the user who made the request, not `NULL`.
+
+**The lesson:** a session hook that fires automatically is a stronger guarantee than a habit every developer has to remember. And when something that should obviously work doesn't, it's worth understanding *why* all the way down — "it's probably a threading thing" isn't an explanation, it's a hunch, and the actual answer here was specific, checkable, and fixable.
