@@ -23,6 +23,7 @@ them to real counters is a mechanical follow-up once a metrics backend
 exists.
 """
 import logging
+import re
 import time
 import uuid
 
@@ -41,6 +42,34 @@ REDACT = {
     "token", "raw_token", "MPESA_PASSKEY", "MPESA_CONSUMER_SECRET",
     "AIRTEL_CLIENT_SECRET", "SECRET_KEY",
 }
+
+
+# The payment callback URL embeds its authentication secret as a path
+# segment (see PAY-01), so the raw path must never be logged — before this,
+# every callback wrote the M-Pesa/Airtel callback token into the
+# request.completed log line, uvicorn's access log and Sentry.
+_CALLBACK_SECRET_PATH = re.compile(r"(/payments/(?:mpesa|airtel)/callback/)[^/?#\s]+")
+
+
+def redact_path(path_or_url: str) -> str:
+    return _CALLBACK_SECRET_PATH.sub(r"\1[redacted]", path_or_url)
+
+
+class _AccessLogPathFilter(logging.Filter):
+    """uvicorn.access records carry (client, method, path, http_version, status)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if isinstance(args, tuple) and len(args) >= 3 and isinstance(args[2], str):
+            record.args = args[:2] + (redact_path(args[2]),) + args[3:]
+        return True
+
+
+def _scrub_sentry_event(event, _hint):
+    request = event.get("request") or {}
+    if isinstance(request.get("url"), str):
+        request["url"] = redact_path(request["url"])
+    return event
 
 
 def _redact(_, __, event_dict: dict) -> dict:
@@ -70,12 +99,15 @@ def configure_observability(app) -> None:
         cache_logger_on_first_use=True,
     )
 
+    logging.getLogger("uvicorn.access").addFilter(_AccessLogPathFilter())
+
     if settings.SENTRY_DSN:
         sentry_sdk.init(
             dsn=settings.SENTRY_DSN,
             environment=settings.ENVIRONMENT,
             traces_sample_rate=0.1,
             send_default_pii=False,
+            before_send=_scrub_sentry_event,
         )
 
     app.add_middleware(RequestContextMiddleware)
@@ -91,7 +123,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         structlog.contextvars.bind_contextvars(
             request_id=request_id,
-            route=request.url.path,
+            route=redact_path(request.url.path),
             method=request.method,
         )
         # Also feeds the audit trail (see REG-01) — the before_flush hook
