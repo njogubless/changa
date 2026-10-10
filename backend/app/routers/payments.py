@@ -16,12 +16,14 @@ from app.models.models import (
     ChamaMember, ProviderEvent, OutboxMessage,
 )
 
-DAILY_CONTRIBUTION_CAP = 20
 from app.schemas.projects import (
     MpesaContributeRequest, AirtelContributeRequest,
     ContributionResponse, ContributionStatusResponse,
 )
 from app.services import mpesa, airtel, ledger_service
+from app.services.provider_errors import ProviderOutcome
+
+DAILY_CONTRIBUTION_CAP = 20
 
 router = APIRouter(tags=["Payments"])
 log = get_logger("changa.payments")
@@ -55,6 +57,28 @@ def _assert_chama_member(project: Project, user: User, db: Session) -> None:
         raise HTTPException(status_code=403, detail="You must be a Chama member to contribute")
 
 
+def _assert_under_daily_cap(user: User, db: Session) -> None:
+    """A per-request rate limit alone doesn't bound total daily provider
+    cost — this does. Each initiation triggers a real STK push billed to
+    the platform; with no cap, an unthrottled loop of small contributions
+    is unlimited spend, not just an inconvenience. See SEC-03.
+
+    Restored: the definition was dropped while resolving the conflict in
+    merge 54a9724 but both call sites survived, so every contribution
+    request raised NameError (HTTP 500)."""
+    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    count = (
+        db.query(Contribution)
+        .filter(Contribution.user_id == user.id, Contribution.initiated_at >= since)
+        .count()
+    )
+    if count >= DAILY_CONTRIBUTION_CAP:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Daily contribution limit reached ({DAILY_CONTRIBUTION_CAP}/24h). Please try again tomorrow.",
+        )
+
+
 def _verify_callback_token(token: str, expected: str) -> None:
     """Reject any callback that doesn't present the configured path secret.
 
@@ -70,25 +94,33 @@ def _verify_callback_token(token: str, expected: str) -> None:
 
 
 def _settle_from_verified_status(
-    db: Session, contribution: Contribution, verified_success: bool, receipt: str | None,
+    db: Session, contribution: Contribution, verified: dict, receipt: str | None,
 ) -> None:
     """Credit or fail a contribution from an authenticated provider status
     check — never from the callback body itself, which is unauthenticated
     and forgeable. The amount credited is always `contribution.amount`
     (what we initiated the push for), never a value read from the callback
     body (see PAY-01, FIN-01).
-    """
-    if contribution.status == ContributionStatus.SUCCESS:
-        return
-    if contribution.status not in (ContributionStatus.PENDING, ContributionStatus.FAILED):
-        return
 
-    if verified_success:
+    UNKNOWN changes nothing: the contribution stays PENDING and the
+    reconciliation sweep asks the provider again. Treating "no answer" as
+    FAILED used to drop paid contributions out of reconciliation for good.
+    """
+    if contribution.status not in (ContributionStatus.PENDING, ContributionStatus.FAILED):
+        return  # already settled (SUCCESS) or withdrawn (CANCELLED)
+
+    outcome = verified["outcome"]
+    log_fields = dict(provider=contribution.provider.value, reference=contribution.reference)
+
+    if outcome is ProviderOutcome.SUCCESS:
         # Ledger-backed, atomic and idempotent — see FIN-02.
-        ledger_service.credit_contribution(db, contribution, receipt, datetime.now(timezone.utc))
+        applied = ledger_service.credit_contribution(db, contribution, receipt, datetime.now(timezone.utc))
+        log.info("payment.settled", outcome="success" if applied else "already_credited", **log_fields)
+    elif outcome is ProviderOutcome.FAILED:
+        if ledger_service.fail_contribution(db, contribution, verified.get("reason") or "Provider reported failure"):
+            log.info("payment.settled", outcome="failed", reason=verified.get("reason"), **log_fields)
     else:
-        contribution.status = ContributionStatus.FAILED
-        contribution.failure_reason = "Provider did not confirm a completed payment"
+        log.info("payment.unresolved", reason=verified.get("reason"), **log_fields)
 
 
 @router.post("/contributions/mpesa", response_model=ContributionResponse, status_code=202)
@@ -244,13 +276,13 @@ async def mpesa_callback(token: str, request: Request, db: Session = Depends(get
     # our own credentials, is the only source of truth for whether it
     # actually succeeded.
     verified = await mpesa.query_stk_status(checkout_request_id)
-    event.verified = verified["success"]
-    if not verified["success"]:
-        event.rejection_reason = verified.get("reason") or "provider_did_not_confirm"
+    event.verified = verified["outcome"] is ProviderOutcome.SUCCESS
+    if not event.verified:
+        event.rejection_reason = (verified.get("reason") or verified["outcome"].value)[:100]
 
     # The receipt number is only ever used as a display/support-reference
     # value below, never to decide whether to credit anything — that
-    # decision rests solely on `verified["success"]" above. A forged
+    # decision rests solely on `verified["outcome"]` above. A forged
     # receipt string here cannot cause a false credit.
     items = {
         item.get("Name"): item.get("Value")
@@ -258,7 +290,7 @@ async def mpesa_callback(token: str, request: Request, db: Session = Depends(get
     }
     receipt_hint = items.get("MpesaReceiptNumber")
 
-    _settle_from_verified_status(db, contribution, verified["success"], receipt=receipt_hint)
+    _settle_from_verified_status(db, contribution, verified, receipt=receipt_hint)
     db.commit()
     return {"ResultCode": 0, "ResultDesc": "Accepted"}
 
@@ -295,10 +327,10 @@ async def airtel_callback(token: str, request: Request, db: Session = Depends(ge
     # As with M-Pesa: the callback body is a hint, never the source of
     # truth. Query Airtel directly for this reference's real status.
     verified = await airtel.query_transaction_status(reference)
-    event.verified = verified["success"]
-    if not verified["success"]:
-        event.rejection_reason = "provider_did_not_confirm"
+    event.verified = verified["outcome"] is ProviderOutcome.SUCCESS
+    if not event.verified:
+        event.rejection_reason = (verified.get("reason") or verified["outcome"].value)[:100]
 
-    _settle_from_verified_status(db, contribution, verified["success"], verified.get("receipt"))
+    _settle_from_verified_status(db, contribution, verified, verified.get("receipt"))
     db.commit()
     return {"status": "ok"}
