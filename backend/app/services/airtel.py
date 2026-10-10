@@ -1,7 +1,11 @@
 import httpx
 from decimal import Decimal
 from app.core.config import settings
-from app.core.types import to_money, is_whole_currency_unit, ProviderPrecisionError
+from app.core.types import is_whole_currency_unit, ProviderPrecisionError
+from app.services.provider_errors import (
+    ProviderOutcome, ProviderAmbiguousError, ProviderRejectedError, ProviderRetryableError,
+    classify_push_response, classify_send_error,
+)
 
 
 async def get_access_token() -> str:
@@ -25,9 +29,11 @@ async def initiate_payment(phone: str, amount: Decimal, reference: str) -> dict:
     if not is_whole_currency_unit(amount):
         raise ProviderPrecisionError("Airtel Money accepts whole shillings only")
 
-    token = await get_access_token()
+    try:
+        token = await get_access_token()
+    except (httpx.HTTPError, KeyError, ValueError) as exc:
+        raise ProviderRetryableError(f"Airtel OAuth failed: {type(exc).__name__}") from exc
 
-    
     airtel_phone = phone.replace("254", "0", 1) if phone.startswith("254") else phone
 
     payload = {
@@ -36,20 +42,34 @@ async def initiate_payment(phone: str, amount: Decimal, reference: str) -> dict:
         "transaction": {"amount": int(amount), "country": "KE", "currency": "KES", "id": reference},
     }
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{settings.AIRTEL_BASE_URL}/merchant/v1/payments/",
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "X-Country": "KE",
-                "X-Currency": "KES",
-            },
-            timeout=15.0,
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{settings.AIRTEL_BASE_URL}/merchant/v1/payments/",
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "X-Country": "KE",
+                    "X-Currency": "KES",
+                },
+                timeout=15.0,
+            )
+    except httpx.HTTPError as exc:
+        raise classify_send_error(exc) from exc
+
+    error = classify_push_response(response)
+    if error is not None:
+        raise error
+    try:
+        body = response.json()
+    except ValueError as exc:
+        raise ProviderAmbiguousError("unparseable Airtel payment response") from exc
+    if (body.get("status") or {}).get("success") is False:
+        raise ProviderRejectedError(
+            f"Airtel did not accept the payment (code={(body.get('status') or {}).get('response_code')!r})"
         )
-        response.raise_for_status()
-        return response.json()
+    return body
 
 
 async def query_transaction_status(reference: str) -> dict:
@@ -59,46 +79,36 @@ async def query_transaction_status(reference: str) -> dict:
     and must never be trusted on its own (see PAY-01). This requires our
     own Airtel credentials to call, so its answer can't be forged by a
     third party the way a POSTed callback body can.
+
+    Transaction status codes: TS = success, TF = failed; anything else
+    (TIP in progress, TA ambiguous, missing) and any transport/HTTP error is
+    UNKNOWN — the contribution stays PENDING and is asked about again.
+    Returns {"outcome": ProviderOutcome, "receipt": str | None, "reason": str | None}.
     """
-    token = await get_access_token()
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{settings.AIRTEL_BASE_URL}/standard/v1/payments/{reference}",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "X-Country": "KE",
-                "X-Currency": "KES",
-            },
-            timeout=15.0,
-        )
+    try:
+        token = await get_access_token()
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{settings.AIRTEL_BASE_URL}/standard/v1/payments/{reference}",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "X-Country": "KE",
+                    "X-Currency": "KES",
+                },
+                timeout=15.0,
+            )
+        body = response.json() if response.status_code == 200 else None
+    except (httpx.HTTPError, KeyError, ValueError) as exc:
+        return {"outcome": ProviderOutcome.UNKNOWN, "receipt": None, "reason": f"query error: {type(exc).__name__}"}
 
-    if response.status_code != 200:
-        return {"success": False, "receipt": None}
+    if body is None:
+        return {"outcome": ProviderOutcome.UNKNOWN, "receipt": None, "reason": f"query returned HTTP {response.status_code}"}
 
-    transaction = response.json().get("data", {}).get("transaction", {})
-    success = transaction.get("status") == "TS"
-    return {"success": success, "receipt": transaction.get("airtel_money_id")}
-
-
-def parse_callback(body: dict) -> dict:
-    """
-    Parse Airtel Money callback.
-    Returns: { success, amount, receipt, phone, failure_reason }
-    """
-    transaction = body.get("transaction", {})
-    status_code = transaction.get("status_code", "")
-
-    if status_code == "TS":
-        return {
-            "success": True,
-            "amount": to_money(transaction.get("amount", 0)),
-            "receipt": transaction.get("airtel_money_id"),
-            "phone": transaction.get("msisdn", ""),
-            "failure_reason": None,
-        }
-
-    return {
-        "success": False,
-        "failure_reason": transaction.get("message", "Payment failed"),
-    }
+    transaction = (body.get("data") or {}).get("transaction") or {}
+    status = transaction.get("status")
+    if status == "TS":
+        return {"outcome": ProviderOutcome.SUCCESS, "receipt": transaction.get("airtel_money_id"), "reason": None}
+    if status == "TF":
+        return {"outcome": ProviderOutcome.FAILED, "receipt": None, "reason": transaction.get("message") or "TF"}
+    return {"outcome": ProviderOutcome.UNKNOWN, "receipt": None, "reason": f"transaction status {status!r}"}

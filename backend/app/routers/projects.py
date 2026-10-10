@@ -7,7 +7,7 @@ from app.database import get_db
 from app.core.security import get_current_user
 from app.core.types import ZERO
 from app.models.models import (
-    User, Project, ChamaMember, ContributionStatus, Contribution,
+    User, Project, ChamaMember, ContributionStatus, Contribution, Budget,
 )
 from app.schemas.projects import (
     ProjectUpdateRequest, ProjectResponse, ProjectListResponse,
@@ -124,6 +124,25 @@ def delete_project(
     _assert_chama_member(project, current_user, db)
     _assert_owner(project, current_user)
 
+    # Contributions and ledger entries reference the project without a
+    # cascade, so deleting one with any payment history used to fail on the
+    # foreign key and surface as a 500. Financial records must outlive the
+    # project anyway — refuse, and point at the lifecycle status instead.
+    has_payments = db.query(
+        db.query(Contribution).filter(Contribution.project_id == project.id).exists()
+    ).scalar()
+    if has_payments:
+        raise HTTPException(
+            status_code=409,
+            detail="This project has contribution records and cannot be deleted. "
+                   "Set its status to cancelled instead.",
+        )
+
+    # Budgets (other users' data) may link to this project; keep the budget
+    # and its stored project name, drop only the dangling reference.
+    db.query(Budget).filter(Budget.linked_project_id == project.id).update(
+        {"linked_project_id": None}, synchronize_session=False,
+    )
     db.delete(project)
     db.commit()
 

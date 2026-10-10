@@ -4,18 +4,26 @@ Two loops, both started from the app lifespan (see app/main.py) and both
 using their own short-lived sync Session — never the request-scoped one:
 
 1. `drain_outbox` — turns queued OutboxMessage rows into actual STK
-   pushes / Airtel initiations. A provider timeout is never treated as a
-   failure: the contribution simply stays PENDING and the reconciliation
-   sweep resolves it later from the provider's own authoritative status.
-   Only an explicit rejection from the provider (a 4xx/validation error,
-   or our own precision check) marks the contribution FAILED.
+   pushes / Airtel initiations. What happens on error depends on whether
+   the request could have reached the provider (app/services/provider_errors.py):
+   - retryable (never sent: connect error, OAuth failure) -> retried on the
+     next loop; once OUTBOX_MAX_ATTEMPTS is exhausted the contribution is
+     FAILED, because no prompt was ever sent.
+   - rejected (the provider answered and refused, or our precision check)
+     -> contribution FAILED.
+   - ambiguous (read timeout, gateway 5xx, dropped connection, any
+     unexpected exception) -> never re-pushed, since a second push can
+     charge the payer twice. The contribution stays PENDING for the sweep.
 
 2. `reconcile_pending` — the safety net. Any contribution still PENDING
-   longer than RECONCILE_STALE_AFTER_SECONDS is queried against the
-   provider directly; if the provider confirms success it is credited
-   through the ledger (FIN-02), if it confirms failure it is marked
-   FAILED, and if it still has no answer after RECONCILE_MAX_ATTEMPTS it
-   is escalated to manual review rather than polled forever.
+   longer than RECONCILE_STALE_AFTER is queried against the provider
+   directly: SUCCESS is credited through the ledger (FIN-02), a definitive
+   FAILED is marked FAILED, and UNKNOWN is asked again. After
+   RECONCILE_MAX_ATTEMPTS without a definitive answer the contribution is
+   left PENDING with failure_reason = NEEDS_REVIEW and drops out of the
+   sweep — it is never turned into FAILED on a guess, because the payer
+   may well have paid. Ops query: status = 'PENDING' AND
+   failure_reason = 'needs_manual_review'.
 
 Both loops do their DB work in a worker thread (`asyncio.to_thread`) so a
 slow query never stalls the event loop that is also serving requests —
@@ -30,8 +38,6 @@ import logging
 from datetime import timedelta
 from uuid import UUID
 
-from sqlalchemy import select
-
 from app.core.types import ProviderPrecisionError
 from app.database import SessionLocal
 from app.models.models import (
@@ -39,6 +45,9 @@ from app.models.models import (
     PaymentProvider, utcnow,
 )
 from app.services import mpesa, airtel, ledger_service
+from app.services.provider_errors import (
+    ProviderOutcome, ProviderAmbiguousError, ProviderRejectedError, ProviderRetryableError,
+)
 
 log = logging.getLogger("changa.payment_worker")
 
@@ -49,28 +58,54 @@ RECONCILE_STALE_AFTER = timedelta(seconds=90)
 RECONCILE_MAX_ATTEMPTS = 10
 LOOP_INTERVAL_SECONDS = 5
 
+NEEDS_REVIEW = "needs_manual_review"
+
+
+def _claim_next_message(db, skip_ids: list[UUID]) -> OutboxMessage | None:
+    """Lock one PENDING message, flip it to PROCESSING and commit.
+
+    One at a time on purpose: the previous version locked a batch of 20
+    with FOR UPDATE SKIP LOCKED and then committed after the first, which
+    released the locks on the other 19 while this worker still meant to
+    process them — a second worker (another uvicorn worker process or
+    replica) could then claim and push the same contributions. Committing
+    PROCESSING under the row lock is the claim itself.
+
+    `skip_ids` holds messages already handled in this pass, so a retryable
+    failure is retried on the next loop iteration rather than immediately.
+    """
+    query = db.query(OutboxMessage).filter(OutboxMessage.status == OutboxStatus.PENDING)
+    if skip_ids:
+        query = query.filter(OutboxMessage.id.notin_(skip_ids))
+    message = (
+        query.order_by(OutboxMessage.created_at)
+        .limit(1)
+        .with_for_update(skip_locked=True)
+        .first()
+    )
+    if message is None:
+        return None
+    message.status = OutboxStatus.PROCESSING
+    db.commit()
+    return message
+
 
 def _drain_outbox_sync() -> None:
     db = SessionLocal()
     try:
-        messages = (
-            db.query(OutboxMessage)
-            .filter(OutboxMessage.status == OutboxStatus.PENDING)
-            .order_by(OutboxMessage.created_at)
-            .limit(OUTBOX_BATCH_SIZE)
-            .with_for_update(skip_locked=True)
-            .all()
-        )
-        for message in messages:
+        handled: list[UUID] = []
+        for _ in range(OUTBOX_BATCH_SIZE):
+            message = _claim_next_message(db, handled)
+            if message is None:
+                break
+            handled.append(message.id)
             _process_outbox_message(db, message)
     finally:
         db.close()
 
 
 def _process_outbox_message(db, message: OutboxMessage) -> None:
-    message.status = OutboxStatus.PROCESSING
-    db.commit()
-
+    contribution = None
     try:
         payload = json.loads(message.payload)
         contribution = db.get(Contribution, UUID(payload["contribution_id"]))
@@ -88,11 +123,9 @@ def _process_outbox_message(db, message: OutboxMessage) -> None:
             return
 
         if contribution.provider == PaymentProvider.AIRTEL and contribution.push_attempts > 0:
-            # Airtel has no separate acknowledgement handle to check first,
-            # and the transaction `id` we send is the same idempotency key
-            # on every attempt, so a second explicit push is more risk than
-            # benefit — leave it to the reconciliation sweep, which queries
-            # Airtel directly by that same reference.
+            # A previous push may have reached Airtel. The transaction `id`
+            # we send is our reference, so the reconciliation sweep can
+            # always ask Airtel about it directly — no second push needed.
             message.status = OutboxStatus.DONE
             db.commit()
             return
@@ -102,23 +135,45 @@ def _process_outbox_message(db, message: OutboxMessage) -> None:
         message.processed_at = utcnow()
         db.commit()
 
-    except ProviderPrecisionError as exc:
-        contribution.status = ContributionStatus.FAILED
-        contribution.failure_reason = "amount_precision_rejected"
-        message.status = OutboxStatus.DONE
-        message.last_error = str(exc)[:255]
-        db.commit()
-
-    except Exception as exc:  # noqa: BLE001 — a timeout must never read as failure
+    except ProviderRetryableError as exc:
+        db.rollback()
         message.attempts += 1
         message.last_error = str(exc)[:255]
-        contribution.push_attempts += 1
         if message.attempts >= OUTBOX_MAX_ATTEMPTS:
             message.status = OutboxStatus.FAILED
+            if contribution is not None:
+                ledger_service.fail_contribution(db, contribution, "push_not_sent")
             log.error("outbox.exhausted", extra={"message_id": str(message.id)})
         else:
             message.status = OutboxStatus.PENDING  # retry next loop iteration
         db.commit()
+
+    except (ProviderRejectedError, ProviderPrecisionError) as exc:
+        db.rollback()
+        reason = (
+            "amount_precision_rejected" if isinstance(exc, ProviderPrecisionError)
+            else f"provider_rejected: {exc}"
+        )
+        if contribution is not None:
+            ledger_service.fail_contribution(db, contribution, reason)
+        message.status = OutboxStatus.DONE
+        message.last_error = str(exc)[:255]
+        db.commit()
+
+    except Exception as exc:  # noqa: BLE001 — ProviderAmbiguousError, or a bug
+        # The push may have been created. Never retry it and never fail the
+        # contribution on a guess; the reconciliation sweep queries the
+        # provider (or escalates to manual review if there is no handle).
+        db.rollback()
+        if contribution is not None:
+            contribution.push_attempts += 1
+        message.status = OutboxStatus.FAILED
+        message.last_error = f"ambiguous: {exc}"[:255]
+        db.commit()
+        log.error(
+            "outbox.ambiguous",
+            extra={"message_id": str(message.id), "error_type": type(exc).__name__},
+        )
 
 
 async def _push_to_provider(db, contribution: Contribution) -> None:
@@ -130,13 +185,14 @@ async def _push_to_provider(db, contribution: Contribution) -> None:
             reference=contribution.reference,
             description=f"Changa: {project.title[:20]}",
         )
-        contribution.checkout_request_id = result.get("CheckoutRequestID")
+        contribution.checkout_request_id = result["CheckoutRequestID"]
     else:
         await airtel.initiate_payment(
             phone=contribution.phone,
             amount=contribution.amount,
             reference=contribution.reference,
         )
+    contribution.push_attempts += 1
 
 
 def _reconcile_pending_sync() -> list[UUID]:
@@ -160,6 +216,15 @@ def _reconcile_pending_sync() -> list[UUID]:
         db.close()
 
 
+def _record_unresolved(db, contribution: Contribution, log_event: str) -> None:
+    contribution.reconcile_attempts += 1
+    if contribution.reconcile_attempts >= RECONCILE_MAX_ATTEMPTS:
+        # Out of automatic attempts with no definitive answer. Stays PENDING
+        # (the payer may have paid) and leaves the sweep; a human resolves it.
+        contribution.failure_reason = NEEDS_REVIEW
+        log.error(log_event, extra={"contribution_id": str(contribution.id)})
+
+
 async def _reconcile_one(contribution_id: UUID) -> None:
     db = SessionLocal()
     try:
@@ -168,15 +233,10 @@ async def _reconcile_one(contribution_id: UUID) -> None:
             return
 
         if contribution.provider == PaymentProvider.MPESA and not contribution.checkout_request_id:
-            # The initiation push itself never got a confirmed response —
-            # there is no handle to query Daraja with. Count this against
-            # the same attempt budget rather than polling forever with
-            # nothing to check.
-            contribution.reconcile_attempts += 1
-            if contribution.reconcile_attempts >= RECONCILE_MAX_ATTEMPTS:
-                contribution.status = ContributionStatus.FAILED
-                contribution.failure_reason = "push_never_confirmed"
-                log.error("reconcile.push_never_confirmed", extra={"contribution_id": str(contribution.id)})
+            # The push was never acknowledged with a CheckoutRequestID, so
+            # there is no handle to query Daraja with. A raw callback for it
+            # (if the payer did pay) is still kept in provider_events.
+            _record_unresolved(db, contribution, "reconcile.push_never_confirmed")
             db.commit()
             return
 
@@ -187,16 +247,12 @@ async def _reconcile_one(contribution_id: UUID) -> None:
             verified = await airtel.query_transaction_status(contribution.reference)
             receipt = verified.get("receipt")
 
-        if verified["success"]:
+        if verified["outcome"] is ProviderOutcome.SUCCESS:
             ledger_service.credit_contribution(db, contribution, receipt, utcnow())
-            db.commit()
-            return
-
-        contribution.reconcile_attempts += 1
-        if contribution.reconcile_attempts >= RECONCILE_MAX_ATTEMPTS:
-            contribution.status = ContributionStatus.FAILED
-            contribution.failure_reason = "escalated_manual_review"
-            log.error("reconcile.escalated", extra={"contribution_id": str(contribution.id)})
+        elif verified["outcome"] is ProviderOutcome.FAILED:
+            ledger_service.fail_contribution(db, contribution, verified.get("reason") or "provider_failed")
+        else:
+            _record_unresolved(db, contribution, "reconcile.escalated")
         db.commit()
     finally:
         db.close()

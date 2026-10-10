@@ -60,6 +60,26 @@ def credit_contribution(db: Session, contribution: Contribution, receipt: str | 
     return True
 
 
+def fail_contribution(db: Session, contribution: Contribution, reason: str) -> bool:
+    """Move a PENDING contribution to FAILED. Returns True if it did.
+
+    A conditional UPDATE, never `contribution.status = FAILED` on the ORM
+    object: the callback handler and the reconciliation sweep can act on the
+    same contribution concurrently, and a plain attribute write would issue
+    `UPDATE ... WHERE id = :id` and overwrite a SUCCESS the other one had
+    just committed — leaving a ledger credit behind a FAILED contribution.
+    """
+    result = db.execute(
+        update(Contribution)
+        .where(Contribution.id == contribution.id,
+               Contribution.status == ContributionStatus.PENDING)
+        .values(status=ContributionStatus.FAILED, failure_reason=reason[:500])
+        .execution_options(synchronize_session=False)
+    )
+    db.expire(contribution)
+    return result.rowcount == 1
+
+
 def find_ledger_divergence(db: Session) -> list[dict]:
     """Recompute every project's total from the ledger and return mismatches.
 
