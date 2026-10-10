@@ -10,7 +10,10 @@ from app.core.tokens import is_access_token_revoked
 from app.database import get_db
 from app.models.models import User
 
-bearer_scheme = HTTPBearer()
+# auto_error=False: with the default, a request with no Authorization header
+# is rejected with 403, which is the wrong status for "not authenticated" and
+# is not the 401 the mobile client's refresh interceptor reacts to.
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -50,7 +53,7 @@ class AuthContext:
 
 
 def get_auth_context(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> AuthContext:
     """Decodes and fully validates the bearer token, including revocation.
@@ -61,6 +64,12 @@ def get_auth_context(
     FastAPI caches this per request, so using both costs one decode, not
     two.
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     payload = decode_token(credentials.credentials)
 
     if payload.get("type") != "access":
