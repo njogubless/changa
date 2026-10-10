@@ -123,6 +123,8 @@ class PaymentPollNotifier extends StateNotifier<PaymentPollState> {
 
   void startPolling(String reference) {
     _timer?.cancel();
+    // Fresh attempt budget, so "Check again" after a timeout actually polls.
+    state = const PaymentPollState(status: PollStatus.polling);
     _poll(reference);
     _timer = Timer.periodic(ApiConstants.pollInterval, (_) {
       _poll(reference);
@@ -135,8 +137,6 @@ class PaymentPollNotifier extends StateNotifier<PaymentPollState> {
       state = PaymentPollState(
         status: PollStatus.timeout,
         attempts: state.attempts,
-        failureReason:
-            'Payment confirmation timed out. Check your M-Pesa messages.',
       );
       return;
     }

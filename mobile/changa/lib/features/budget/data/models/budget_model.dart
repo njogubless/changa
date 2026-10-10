@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:changa/core/utils/json_parsing.dart';
 
 
 
@@ -187,8 +188,8 @@ class BudgetLineItem {
         id: j['id'],
         category: BudgetCategory.values.byName(j['category']),
         customLabel: j['customLabel'],
-        allocatedAmount: (j['allocatedAmount'] as num).toDouble(),
-        spentAmount: (j['spentAmount'] as num?)?.toDouble() ?? 0,
+        allocatedAmount: parseDecimal(j['allocatedAmount']),
+        spentAmount: parseDecimalOr(j['spentAmount'], 0),
       );
 }
 
@@ -227,7 +228,7 @@ class BudgetTransaction {
         budgetId: j['budgetId'],
         lineItemId: j['lineItemId'],
         type: TransactionType.values.byName(j['type']),
-        amount: (j['amount'] as num).toDouble(),
+        amount: parseDecimal(j['amount']),
         description: j['description'],
         date: DateTime.parse(j['date']),
       );
@@ -290,7 +291,7 @@ class BudgetModel {
         id: j['id'],
         title: j['title'],
         type: BudgetType.values.byName(j['type']),
-        totalIncome: (j['totalIncome'] as num).toDouble(),
+        totalIncome: parseDecimal(j['totalIncome']),
         lineItems: (j['lineItems'] as List)
             .map((e) => BudgetLineItem.fromJson(e))
             .toList(),

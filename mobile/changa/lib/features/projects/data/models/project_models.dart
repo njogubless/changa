@@ -1,3 +1,4 @@
+import 'package:changa/core/utils/json_parsing.dart';
 enum ProjectStatus { active, completed, cancelled, paused }
 enum PaymentAccountType { paybill, till, pochi }
 
@@ -58,8 +59,8 @@ class ProjectModel {
         title: json['title'] as String,
         description: json['description'] as String?,
         coverImageUrl: json['cover_image_url'] as String?,
-        targetAmount: (json['target_amount'] as num).toDouble(),
-        raisedAmount: (json['raised_amount'] as num).toDouble(),
+        targetAmount: parseDecimal(json['target_amount']),
+        raisedAmount: parseDecimal(json['raised_amount']),
         currency: json['currency'] as String? ?? 'KES',
         status: ProjectStatus.values.firstWhere(
           (e) => e.name == json['status'],
@@ -69,8 +70,8 @@ class ProjectModel {
         deadline: json['deadline'] != null
             ? DateTime.parse(json['deadline'] as String)
             : null,
-        percentageFunded: (json['percentage_funded'] as num).toDouble(),
-        deficit: (json['deficit'] as num).toDouble(),
+        percentageFunded: parseDecimal(json['percentage_funded']),
+        deficit: parseDecimal(json['deficit']),
         isFunded: json['is_funded'] as bool? ?? false,
         contributorCount: json['contributor_count'] as int? ?? 0,
         paymentType: PaymentAccountType.values.firstWhere(
@@ -125,7 +126,7 @@ class ContributorModel {
       ContributorModel(
         userId: json['user_id'] as String,
         fullName: json['full_name'] as String?,
-        total: (json['total'] as num).toDouble(),
-        percentage: (json['percentage'] as num).toDouble(),
+        total: parseDecimal(json['total']),
+        percentage: parseDecimal(json['percentage']),
       );
 }

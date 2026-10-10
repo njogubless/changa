@@ -2,6 +2,7 @@ import 'dart:developer' as dev;
 
 import 'package:changa/core/network/api_client.dart';
 import 'package:changa/features/budget/data/models/budget_model.dart';
+import 'package:changa/core/utils/json_parsing.dart';
 
 
 
@@ -56,8 +57,8 @@ BudgetLineItem _lineItemFromMap(Map<String, dynamic> j) => BudgetLineItem(
       id: j['id'] as String,
       category: _catFromApi(j['category'] as String),
       customLabel: j['custom_label'] as String?,
-      allocatedAmount: (j['allocated_amount'] as num).toDouble(),
-      spentAmount: (j['spent_amount'] as num?)?.toDouble() ?? 0,
+      allocatedAmount: parseDecimal(j['allocated_amount']),
+      spentAmount: parseDecimalOr(j['spent_amount'], 0),
     );
 
 BudgetTransaction _txFromMap(
@@ -70,7 +71,7 @@ BudgetTransaction _txFromMap(
       budgetId: budgetId,
       lineItemId: categoryId,
       type: TransactionType.expense,
-      amount: (j['amount'] as num).toDouble(),
+      amount: parseDecimal(j['amount']),
       description: j['description'] as String,
       date: DateTime.parse(j['date'] as String),
     );
@@ -90,7 +91,7 @@ BudgetModel _budgetFromMap(Map<String, dynamic> j) {
     id: budgetId,
     title: j['title'] as String,
     type: _typeFromApi(j['type'] as String),
-    totalIncome: (j['total_income'] as num).toDouble(),
+    totalIncome: parseDecimal(j['total_income']),
     lineItems: lineItems,
     transactions: transactions,
     createdAt: DateTime.parse(j['created_at'] as String),

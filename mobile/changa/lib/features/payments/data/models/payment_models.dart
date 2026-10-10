@@ -1,3 +1,4 @@
+import 'package:changa/core/utils/json_parsing.dart';
 enum PaymentProvider { mpesa, airtel }
 
 enum ContributionStatus { pending, success, failed, cancelled }
@@ -35,7 +36,7 @@ class ContributionModel {
       ContributionModel(
         id: json['id'] as String,
         projectId: json['project_id'] as String,
-        amount: (json['amount'] as num).toDouble(),
+        amount: parseDecimal(json['amount']),
         currency: json['currency'] as String? ?? 'KES',
         provider: PaymentProvider.values.firstWhere(
           (e) => e.name == json['provider'],
@@ -79,7 +80,7 @@ class ContributionStatusModel {
           orElse: () => ContributionStatus.pending,
         ),
         providerReference: json['provider_reference'] as String?,
-        amount: (json['amount'] as num).toDouble(),
+        amount: parseDecimal(json['amount']),
         completedAt: json['completed_at'] != null
             ? DateTime.parse(json['completed_at'] as String)
             : null,

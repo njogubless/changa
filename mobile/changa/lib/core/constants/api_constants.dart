@@ -1,8 +1,13 @@
 class ApiConstants {
   ApiConstants._();
 
-  
-static const String baseUrl = 'http://192.168.1.193:8000';
+  // Set per build: flutter run --dart-define=API_BASE_URL=https://api.example.com
+  // The default is a developer's LAN backend over cleartext HTTP — release
+  // builds must override it with an https URL.
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://192.168.1.193:8000',
+  );
 
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 30);

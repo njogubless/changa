@@ -78,9 +78,19 @@ class _PaymentStatusScreenState extends ConsumerState<PaymentStatusScreen>
           receipt: pollState.result?.providerReference,
           onDone: () => context.go(AppRoutes.home),
         ),
-      PollStatus.failed || PollStatus.timeout => _FailedView(
+      PollStatus.failed => _FailedView(
           reason: pollState.failureReason ?? 'Payment was not completed.',
           onRetry: () => context.pop(),
+          onHome: () => context.go(AppRoutes.home),
+        ),
+      // No answer yet is not a failure: the payer may already have entered
+      // their PIN and the server keeps confirming with the provider after
+      // the app stops polling. Offering "Try again" here invited a second,
+      // real charge.
+      PollStatus.timeout => _UnconfirmedView(
+          onCheckAgain: () => ref
+              .read(paymentPollProvider.notifier)
+              .startPolling(widget.reference),
           onHome: () => context.go(AppRoutes.home),
         ),
     };
@@ -359,6 +369,68 @@ class _FailedView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
+          OutlinedButton(
+            onPressed: onHome,
+            child: const Text('Back to projects'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+
+class _UnconfirmedView extends StatelessWidget {
+  final VoidCallback onCheckAgain;
+  final VoidCallback onHome;
+
+  const _UnconfirmedView({required this.onCheckAgain, required this.onHome});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.hourglass_top_rounded,
+              color: AppColors.warning,
+              size: 52,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Still confirming your payment',
+            style: AppTextStyles.h2.copyWith(color: AppColors.forest),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            "We haven't heard back from your mobile money provider yet. "
+            "If you entered your PIN, please don't pay again - we'll keep "
+            'checking and update this contribution automatically.',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.forest,
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: onCheckAgain,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Check again'),
+          ),
+          const SizedBox(height: 12),
           OutlinedButton(
             onPressed: onHome,
             child: const Text('Back to projects'),
